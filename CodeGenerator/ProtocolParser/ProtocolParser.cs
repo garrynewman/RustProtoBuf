@@ -2,18 +2,64 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
+//using System.Collections.Concurrent;
 
 // 
 //  Read/Write string and byte arrays 
 // 
 namespace SilentOrbit.ProtocolBuffers
 {
+
+    public interface IProto
+    {
+        void WriteToStream( Stream stream );
+        void ReadFromStream( Stream stream, int size );
+    }
+
     public static partial class ProtocolParser
     {
+        static byte[] staticBuffer = new byte[1024 * 128];
+
+        public static float ReadSingle( Stream stream )
+        {
+            stream.Read( staticBuffer, 0, 4 );
+            return Facepunch.ByteConvert.ToFloat( staticBuffer );
+        }
+
+        public static void WriteSingle( Stream stream, float f )
+        {
+            Facepunch.ByteConvert.FromFloat( staticBuffer, f );
+            stream.Write( staticBuffer, 0, 4 );
+        }
+
         public static string ReadString(Stream stream)
         {
-            return Encoding.UTF8.GetString(ReadBytes(stream));
+            UnityEngine.Profiler.BeginSample( "ProtoParser.ReadString" );
+
+            int length = (int)ReadUInt32(stream);
+            if ( length <= 0 )
+                return string.Empty;
+
+            string str = string.Empty;
+
+            if ( length >= staticBuffer.Length )
+            {
+                UnityEngine.Profiler.BeginSample( "new Buffer" );
+                byte[] buffer = new byte[length];
+                UnityEngine.Profiler.EndSample();
+                stream.Read( buffer, 0, length );
+                str = Encoding.UTF8.GetString( buffer, 0, length );
+            }
+            else
+            {
+                stream.Read( staticBuffer, 0, length );
+                str = Encoding.UTF8.GetString( staticBuffer, 0, length );
+            }
+                
+            UnityEngine.Profiler.EndSample();
+
+            return str;
         }
 
         /// <summary>
@@ -21,6 +67,8 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static byte[] ReadBytes(Stream stream)
         {
+            UnityEngine.Profiler.BeginSample( "ProtoParser.ReadBytes" );
+
             //VarInt length
             int length = (int)ReadUInt32(stream);
 
@@ -34,6 +82,9 @@ namespace SilentOrbit.ProtocolBuffers
                     throw new ProtocolBufferException("Expected " + (length - read) + " got " + read);
                 read += r;
             }
+
+            UnityEngine.Profiler.EndSample();
+
             return buffer;
         }
 
@@ -50,9 +101,14 @@ namespace SilentOrbit.ProtocolBuffers
                 ReadBytes(stream);
         }
 
-        public static void WriteString(Stream stream, string val)
+        public static void WriteString( Stream stream, string val )
         {
-            WriteBytes(stream, Encoding.UTF8.GetBytes(val));
+            UnityEngine.Profiler.BeginSample( "ProtoParser.WriteString" );
+            var len = Encoding.UTF8.GetBytes( val, 0, val.Length, staticBuffer, 0 );
+
+            WriteUInt32( stream, (uint)len );
+            stream.Write( staticBuffer, 0, len );
+            UnityEngine.Profiler.EndSample();
         }
 
         /// <summary>
@@ -64,132 +120,6 @@ namespace SilentOrbit.ProtocolBuffers
             stream.Write(val, 0, val.Length);
         }
 
-    }
-
-    [Obsolete("Renamed to PositionStream")]
-    public class StreamRead : PositionStream
-    {
-        public StreamRead (Stream baseStream) : base(baseStream)
-        {
-            
-        }
-    }
-
-    /// <summary>
-    /// Wrapper for streams that does not support the Position property.
-    /// Adds support for the Position property.
-    /// </summary>
-    public class PositionStream : Stream
-    {
-        Stream stream;
-
-        /// <summary>
-        /// Bytes left to read
-        /// </summary>
-        public int BytesRead { get; private set; }
-
-        /// <summary>
-        /// Define how many bytes are allowed to read
-        /// </summary>
-        /// <param name='baseStream'>
-        /// Base stream.
-        /// </param>
-        /// <param name='maxLength'>
-        /// Max length allowed to read from the stream.
-        /// </param>
-        public PositionStream(Stream baseStream)
-        {
-            this.stream = baseStream;
-        }
-
-        public override void Flush()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            int read = stream.Read(buffer, offset, count);
-            BytesRead += read;
-            return read;
-        }
-
-        public override int ReadByte()
-        {
-            int b = stream.ReadByte();
-            BytesRead += 1;
-            return b;
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override bool CanRead
-        {
-            get
-            {
-                return true;
-            }
-        }
-
-        public override bool CanSeek
-        {
-            get
-            {
-                return false;
-            }
-        }
-
-        public override bool CanWrite
-        {
-            get
-            {
-                return false;
-            }
-        }
-
-        public override long Length
-        {
-            get
-            {
-                return stream.Length;
-            }
-        }
-
-        public override long Position
-        {
-            get
-            {
-                return this.BytesRead;
-            }
-            set
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override void Close()
-        {
-            base.Close();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            stream.Dispose();
-            base.Dispose(disposing);
-        }
     }
 }
 

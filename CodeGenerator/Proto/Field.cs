@@ -44,6 +44,7 @@ namespace SilentOrbit.ProtocolBuffers
         //Field options
         public bool OptionPacked = false;
         public bool OptionDeprecated = false;
+		public bool OptionUseReferences = true;
         public string OptionDefault = null;
 
         public bool IsUsingBinaryWriter

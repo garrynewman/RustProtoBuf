@@ -49,8 +49,16 @@ then write the code and the changes in a separate file.");
                     {
                         if (ns != null) //First time
                             cw.EndBracket();
-                        cw.Bracket("namespace " + m.CsNamespace);
+
+						if ( m.CsNamespace == "global" )
+						{
+							ns = null;
+						}
+						else
+						{
+							cw.Bracket( "namespace " + m.CsNamespace );
                         ns = m.CsNamespace;
+                    }
                     }
                     MessageCode.GenerateClass(m, cw, options);
                     cw.WriteLine();
@@ -69,6 +77,7 @@ then write the code and the changes in a separate file.");
                     cw.WriteLine();
                 }
 
+				if ( ns != null )
                 cw.EndBracket();
             }
 
@@ -91,6 +100,9 @@ This file will be overwritten when CodeGenerator is run.");
                 cw.WriteLine("using System.Collections.Generic;");
                 cw.WriteLine();
 
+				cw.WriteLine( "#pragma warning disable 0472, 0162" );
+				cw.WriteLine();
+
                 string ns = null; //avoid writing namespace between classes if they belong to the same
                 foreach (ProtoMessage m in file.Messages.Values)
                 {
@@ -98,11 +110,21 @@ This file will be overwritten when CodeGenerator is run.");
                     {
                         if (ns != null) //First time
                             cw.EndBracket();
-                        cw.Bracket("namespace " + m.CsNamespace);
+
+						if ( m.CsNamespace == "global" )
+						{
+							ns = null;
+						}
+						else
+						{
+							cw.Bracket( "namespace " + m.CsNamespace );
                         ns = m.CsNamespace;
+                    }
                     }
                     MessageSerializer.GenerateClassSerializer(m, cw, options);
                 }
+
+				if ( ns != null )
                 cw.EndBracket();
             }
 

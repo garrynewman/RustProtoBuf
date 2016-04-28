@@ -16,7 +16,7 @@ namespace SilentOrbit.ProtocolBuffers
         Fixed32 = 5,         //32-bit    fixed32, SFixed32, float
     }
 
-    public class Key
+    public struct Key
     {
         public uint Field { get; set; }
 
@@ -109,6 +109,9 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static byte[] ReadValueBytes(Stream stream, Key key)
         {
+            throw new System.NotSupportedException( "ReadValueBytes" );
+/*
+
             byte[] b;
             int offset = 0;
 
@@ -144,7 +147,7 @@ namespace SilentOrbit.ProtocolBuffers
                     return ProtocolParser.ReadVarIntBytes(stream);
                 default:
                     throw new NotImplementedException("Unknown wire type: " + key.WireType);
-            }
+            }*/
         }
 
     }

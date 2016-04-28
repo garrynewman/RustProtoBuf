@@ -9,15 +9,25 @@ namespace SilentOrbit.ProtocolBuffers
         {
             if (m.OptionExternal || m.OptionType == "interface")
             {
+				var baseclass = m.BaseClass;
+
+				if ( baseclass != null )
+					baseclass = " : " + baseclass;
+				else
+					baseclass = "";
+
                 //Don't make partial class of external classes or interfaces
                 //Make separate static class for them
-                cw.Bracket(m.OptionAccess + " static class " + m.SerializerType);
+                cw.Bracket( m.OptionAccess + " partial class " + m.SerializerType + baseclass );
             }
             else
             {
-                cw.Attribute("System.Serializable()");
-                cw.Bracket(m.OptionAccess + " partial " + m.OptionType + " " + m.SerializerType);
+                //cw.Attribute("System.Serializable()");
+                cw.Bracket(m.OptionAccess + " partial " + m.OptionType + " " + m.SerializerType + " : IDisposable, Facepunch.Pool.IPooled, SilentOrbit.ProtocolBuffers.IProto" );
             }
+
+            GenerateReset( m, cw, options );
+            GenerateCopy( m, cw, options );
 
             GenerateReader(m, cw);
 
@@ -32,40 +42,55 @@ namespace SilentOrbit.ProtocolBuffers
             return;
         }
 
+        static void GenerateCreateNew( CodeWriter cw, string name, ProtoMessage m )
+        {
+            cw.WriteLine( m.CsType + " " + name + " = Facepunch.Pool.Get<"+ m.CsType + ">();" );
+            //cw.WriteLine( m.CsType + " "+ name +" = new " + m.CsType + "();" );
+        }
+
         static void GenerateReader(ProtoMessage m, CodeWriter cw)
         {
             #region Helper Deserialize Methods
             string refstr = (m.OptionType == "struct") ? "ref " : "";
-            if (m.OptionType != "interface")
+			if ( m.OptionType != "interface" && !m.OptionNoPartials )
             {
-                cw.Summary("Helper: create a new instance to deserializing into");
-                cw.Bracket(m.OptionAccess + " static " + m.CsType + " Deserialize(Stream stream)");
-                cw.WriteLine(m.CsType + " instance = new " + m.CsType + "();");
-                cw.WriteLine("Deserialize(stream, " + refstr + "instance);");
-                cw.WriteLine("return instance;");
+				if ( !m.OptionNoInstancing )
+				{
+					cw.Summary( "Helper: create a new instance to deserializing into" );
+					cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(Stream stream)" );
+                    GenerateCreateNew( cw, "instance", m );
+                    cw.WriteLine( "Deserialize(stream, " + refstr + "instance);" );
+					cw.WriteLine( "return instance;" );
                 cw.EndBracketSpace();
 
-                cw.Summary("Helper: create a new instance to deserializing into");
-                cw.Bracket(m.OptionAccess + " static " + m.CsType + " DeserializeLengthDelimited(Stream stream)");
-                cw.WriteLine(m.CsType + " instance = new " + m.CsType + "();");
-                cw.WriteLine("DeserializeLengthDelimited(stream, " + refstr + "instance);");
-                cw.WriteLine("return instance;");
+					cw.Summary( "Helper: create a new instance to deserializing into" );
+					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLengthDelimited(Stream stream)" );
+                    GenerateCreateNew( cw, "instance", m );
+                    cw.WriteLine( "DeserializeLengthDelimited(stream, " + refstr + "instance);" );
+					cw.WriteLine( "return instance;" );
+					cw.EndBracketSpace();
+
+					cw.Summary( "Helper: create a new instance to deserializing into" );
+					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLength(Stream stream, int length)" );
+                    GenerateCreateNew( cw, "instance", m );
+                    cw.WriteLine( "DeserializeLength(stream, length, " + refstr + "instance);" );
+					cw.WriteLine( "return instance;" );
                 cw.EndBracketSpace();
 
-                cw.Summary("Helper: create a new instance to deserializing into");
-                cw.Bracket(m.OptionAccess + " static " + m.CsType + " DeserializeLength(Stream stream, int length)");
-                cw.WriteLine(m.CsType + " instance = new " + m.CsType + "();");
-                cw.WriteLine("DeserializeLength(stream, length, " + refstr + "instance);");
-                cw.WriteLine("return instance;");
+                    cw.Summary( "Helper: put the buffer into a MemoryStream and create a new instance to deserializing into" );
+                    cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(byte[] buffer)" );
+                    GenerateCreateNew( cw, "instance", m );
+                    cw.WriteLine( "using (var ms = new MemoryStream(buffer))" );
+                    cw.WriteIndent( "Deserialize(ms, " + refstr + "instance);" );
+                    cw.WriteLine( "return instance;" );
+                    cw.EndBracketSpace();
+                }
+
+				cw.Summary( "Load this value from a proto buffer" );
+				cw.Bracket( m.OptionAccess + " void FromProto(Stream stream)" );
+				cw.WriteLine( "Deserialize(stream, this );" );
                 cw.EndBracketSpace();
 
-                cw.Summary("Helper: put the buffer into a MemoryStream and create a new instance to deserializing into");
-                cw.Bracket(m.OptionAccess + " static " + m.CsType + " Deserialize(byte[] buffer)");
-                cw.WriteLine(m.CsType + " instance = new " + m.CsType + "();");
-                cw.WriteLine("using (var ms = new MemoryStream(buffer))");
-                cw.WriteIndent("Deserialize(ms, " + refstr + "instance);");
-                cw.WriteLine("return instance;");
-                cw.EndBracketSpace();
             }
 
             cw.Summary("Helper: put the buffer into a MemoryStream before deserializing");
@@ -104,8 +129,8 @@ namespace SilentOrbit.ProtocolBuffers
                 else
                     throw new NotImplementedException();
 
-                if (m.IsUsingBinaryWriter)
-                    cw.WriteLine("BinaryReader br = new BinaryReader(stream);");
+               // if (m.IsUsingBinaryWriter)
+               //     cw.WriteLine("BinaryReader br = new BinaryReader(stream);");
 
                 //Prepare List<> and default values
                 foreach (Field f in m.Fields.Values)
@@ -118,7 +143,7 @@ namespace SilentOrbit.ProtocolBuffers
                             csType = f.OptionCodeType;
 
                         cw.WriteLine("if (instance." + f.CsName + " == null)");
-                        cw.WriteIndent("instance." + f.CsName + " = new List<" + csType + ">();");
+                        cw.WriteIndent("instance." + f.CsName + " = Facepunch.Pool.Get<List<" + csType + ">>();");
                     }
                     else if (f.OptionDefault != null)
                     {
@@ -247,6 +272,160 @@ namespace SilentOrbit.ProtocolBuffers
             return;
         }
 
+        static void ResetAndPoolField( CodeWriter cw, string name, Field f )
+        {
+            switch ( f.ProtoTypeName )
+            {
+                case "bool":
+                    {
+                        cw.WriteLine( name + " = false;" );
+                        break;
+                    }
+
+                case "bytes":
+                    {
+                        cw.WriteLine( name + " = null;" );
+                        break;
+                    }
+
+                case "string":
+                    {
+                        cw.WriteLine( name + " = string.Empty;" );
+                        break;
+                    }
+
+                case "uint32":
+                case "int32":
+                case "float":
+                case "int64":
+                case "uint64":
+                    {
+                        cw.WriteLine( name + " = 0;" );
+                        break;
+                    }
+
+                default:
+                    {
+
+                        if ( f.ProtoType.OptionType == "struct" )
+                        {
+                            //cw.WriteLine( "// Don't bother resetting structs? " );
+                            //cw.WriteLine( "// " + f.ProtoType.OptionNamespace + "." + f.ProtoTypeName + "Serialized.ResetToPool( " + name + ");" );
+                            cw.WriteLine( name + " = default( " + f.ProtoType.OptionNamespace + "." + f.ProtoType.ProtoName + " );" );
+                        }
+                        else if ( f.ProtoType is ProtoEnum )
+                        {
+                            cw.WriteLine( name + " = 0;" );
+                        }
+                        else if ( f.ProtoType.OptionExternal )
+                        {
+                            cw.Bracket( "if ( " + name + " != null )" );
+                            cw.WriteLine( name + " = null;" );
+                            cw.EndBracket();
+                        }
+                        else
+                        {
+                            //cw.WriteLine( "// " + ( f.ProtoType.ToString ) );
+                            cw.Bracket( "if ( " + name + " != null )" );
+                            cw.WriteLine( name + ".ResetToPool();" );
+                            cw.WriteLine( name + " = null;" );
+                            cw.EndBracket();
+                        }
+
+                        break;
+                    }
+            }
+        }
+
+        /// <summary>
+        /// Generates code for resetting
+        /// </summary>
+        static void GenerateReset( ProtoMessage m, CodeWriter cw, Options options )
+        {
+            //
+            // No reset for external classes
+            //
+            if ( m.OptionExternal && m.OptionType != "struct" )
+                return;
+
+            cw.Summary( "Reset the class to its default state" );
+            cw.Bracket( m.OptionAccess + " static void ResetToPool(" + m.CsType + " instance)" );
+
+            if ( m.OptionType != "struct" )
+            {
+                cw.WriteLine( "if ( !instance.ShouldPool ) return;" );
+                cw.WriteLine();
+            }
+
+            foreach ( Field f in m.Fields.Values )
+            {
+                if ( f.Rule == FieldRule.Repeated )
+                {
+                    cw.Bracket( "if ( instance."+ f.CsName + " != null )" );
+
+                    if ( f.ProtoType is ProtoMessage && f.ProtoType.OptionType != "struct" )
+                    {
+                        cw.Bracket( "for ( int i=0; i< instance." + f.CsName + ".Count; i++ )" );
+                        ResetAndPoolField( cw, "instance." + f.CsName + "[i]", f );
+                        cw.EndBracket();
+                    }
+
+                    cw.WriteLine( "var c = instance." + f.CsName + ";" );
+                    cw.WriteLine( "Facepunch.Pool.FreeList( ref c );" );
+                    cw.WriteLine( "instance." + f.CsName + " = c;" );
+                    cw.EndBracket();
+                    cw.WriteLine();
+                    continue;
+                }
+
+                ResetAndPoolField( cw,  "instance." + f.CsName, f );
+            }
+
+            if ( m.OptionType != "struct" )
+            {
+                cw.WriteLine();
+                cw.WriteLine( "Facepunch.Pool.Free( ref instance );" );
+            }
+
+            cw.EndBracket();
+            cw.WriteLine();
+
+            if ( m.OptionType != "struct" )
+            {
+                cw.Summary( "Reset the class to its default state" );
+                cw.Bracket( m.OptionAccess + " void ResetToPool()" );
+                cw.WriteLine( "ResetToPool( this );" );
+                cw.EndBracketSpace();
+
+                cw.WriteLine();
+                cw.WriteLine( "public bool ShouldPool = true;" );
+                cw.WriteLine( "private bool _disposed = false;" );
+                cw.WriteLine();
+
+                cw.Bracket( "public virtual void Dispose()" );
+                cw.WriteLine( "if ( _disposed ) return;" );
+                cw.WriteLine( "ResetToPool();" );
+                cw.WriteLine( "_disposed = true;" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( "public virtual void EnterPool()" );
+                cw.WriteLine( "_disposed = true;" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( "public virtual void LeavePool()" );
+                cw.WriteLine( "_disposed = false;" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( "public virtual void WriteToStream( Stream stream )" );
+                cw.WriteLine( "Serialize( stream, this );" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( "public virtual void ReadFromStream( Stream stream, int size )" );
+                cw.WriteLine( "DeserializeLength( stream, size, this );" );
+                cw.EndBracketSpace();
+            }
+        }
+
         /// <summary>
         /// Generates code for writing a class/message
         /// </summary>
@@ -254,7 +433,8 @@ namespace SilentOrbit.ProtocolBuffers
         {
             string stack = "global::SilentOrbit.ProtocolBuffers.ProtocolParser.Stack";
             if (options.ExperimentalStack != null)
-            {
+        {
+                throw new System.NotSupportedException();
                 cw.WriteLine("[ThreadStatic]");
                 cw.WriteLine("static global::SilentOrbit.ProtocolBuffers.MemoryStreamStack stack = new " + options.ExperimentalStack + "();");
                 stack = "stack";
@@ -267,21 +447,21 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.WriteLine("instance.BeforeSerialize();");
                 cw.WriteLine();
             }
-            if (m.IsUsingBinaryWriter)
-                cw.WriteLine("BinaryWriter bw = new BinaryWriter(stream);");
+            //if (m.IsUsingBinaryWriter)
+            //    cw.WriteLine("BinaryWriter bw = new BinaryWriter(stream);");
 
             //Shared memorystream for all fields
-            cw.WriteLine("var msField = " + stack + ".Pop();");
+            cw.WriteLine( "var msField = Facepunch.Pool.Get<MemoryStream>();");
 
             foreach (Field f in m.Fields.Values)
                 FieldSerializer.FieldWriter(m, f, cw);
 
-            cw.WriteLine(stack + ".Push(msField);");
+            cw.WriteLine("Facepunch.Pool.FreeMemoryStream( ref msField );");
 
             if (m.OptionPreserveUnknown)
             {
                 cw.IfBracket("instance.PreservedFields != null");
-                cw.ForeachBracket("var kv in instance.PreservedFields");
+                cw.ForeachBracket( "kv", "instance.PreservedFields" );
                 cw.WriteLine("global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteKey(stream, kv.Key);");
                 cw.WriteLine("stream.Write(kv.Value, 0, kv.Value.Length);");
                 cw.EndBracket();
@@ -289,6 +469,19 @@ namespace SilentOrbit.ProtocolBuffers
             }
             cw.EndBracket();
             cw.WriteLine();
+
+			if ( m.OptionType != "interface" && !m.OptionNoPartials )
+			{
+				cw.Summary( "Serialize and return data as a byte array (use this sparingly)" );
+				cw.Bracket( m.OptionAccess + " byte[] ToProtoBytes()" );
+				cw.WriteLine( "return SerializeToBytes( this );" );
+				cw.EndBracketSpace();
+
+				cw.Summary( "Serialize to a Stream" );
+				cw.Bracket( m.OptionAccess + " void ToProto( Stream stream )" );
+				cw.WriteLine( "Serialize( stream, this );" );
+				cw.EndBracketSpace();
+			}
 
             cw.Summary("Helper: Serialize into a MemoryStream and return its byte array");
             cw.Bracket(m.OptionAccess + " static byte[] SerializeToBytes(" + m.CsType + " instance)");
@@ -305,6 +498,83 @@ namespace SilentOrbit.ProtocolBuffers
             cw.WriteLine("stream.Write(data, 0, data.Length);");
             cw.EndBracket();
         }
+
+        /// <summary>
+        /// Generates code for resetting
+        /// </summary>
+        static void GenerateCopy( ProtoMessage m, CodeWriter cw, Options options )
+        {
+            //
+            // No reset for external classes
+            //
+            if ( m.OptionExternal )
+                return;
+
+            cw.Summary( "Copy one instance to another" );
+            cw.Bracket( m.OptionAccess + " void CopyTo(" + m.CsType + " instance)" );
+
+            foreach ( Field f in m.Fields.Values )
+            {
+                if ( f.Rule == FieldRule.Repeated )
+                {
+                    cw.WriteLine( "throw new NotImplementedException();" );
+                    continue;
+                }
+
+                switch ( f.ProtoTypeName )
+                {
+                    case "bool":
+                    case "uint32":
+                    case "int32":
+                    case "float":
+                    case "int64":
+                    case "uint64":
+                    case "string":
+                        {
+                            cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ";" );
+                            break;
+                        }
+                    case "bytes":
+                        {
+                            cw.WriteLine( "if ( this." + f.CsName + " == null )" );
+                            cw.Bracket();
+                            cw.WriteLine( "instance." + f.CsName + " = null;" );
+                            cw.EndBracket();
+                            cw.WriteLine( "else" );
+                            cw.Bracket();
+                            cw.WriteLine( "instance." + f.CsName + " = new byte[this." + f.CsName + ".Length];" );
+                            cw.WriteLine( "Array.Copy( this." + f.CsName + ", instance." + f.CsName + ", instance." + f.CsName + ".Length );" );
+                            cw.EndBracket();
+                            break;
+                        }
+
+                    default:
+                        {
+                            if ( f.ProtoType.OptionType == "struct" || f.ProtoType is ProtoEnum )
+                            {
+                                cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ";" );
+                            }
+                            else
+                            {
+                                cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ".Copy();" );
+                            }
+                            break;
+                        }
+                }                       
+            }
+
+            cw.EndBracket();
+            cw.WriteLine();
+
+            cw.Summary( "Reset the class to its default state - " + m.OptionType );
+            cw.Bracket( m.OptionAccess + " " + m.CsType + " Copy()" );
+            cw.WriteLine( "var newInstance = Facepunch.Pool.Get<" + m.CsType + ">();" );
+            cw.WriteLine( "this.CopyTo( newInstance );" );
+            cw.WriteLine( "return newInstance;" );
+            cw.EndBracketSpace();
+        }
     }
+
+
 }
 

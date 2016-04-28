@@ -16,12 +16,24 @@ namespace SilentOrbit.ProtocolBuffers
         public Dictionary<string, ProtoMessage> Messages = new Dictionary<string, ProtoMessage>();
         public Dictionary<string, ProtoEnum> Enums = new Dictionary<string, ProtoEnum>();
 
+		public string BaseClass
+		{
+			get
+			{
+				return this.OptionBase;
+			}
+		}
+
         public string SerializerType
         {
             get
             {
-                if (this.OptionExternal || this.OptionType == "interface")
-                    return CsType + "Serializer";
+				if ( this.OptionType == "interface" || this.OptionNoPartials )
+				{
+					return CsType + "Serialized";
+				}
+				else if (this.OptionExternal )
+                    return CsType;
                 else
                     return CsType;
             }
@@ -31,10 +43,14 @@ namespace SilentOrbit.ProtocolBuffers
         {
             get
             {
-                if (this.OptionExternal || this.OptionType == "interface")
-                    return FullCsType + "Serializer";
-                else
-                    return FullCsType;
+				if ( this.OptionType == "interface" || this.OptionNoPartials )
+				{
+					return FullCsType + "Serialized";
+				}
+				else if ( this.OptionExternal )
+					return FullCsType;
+				else
+					return FullCsType;
             }
         }
 

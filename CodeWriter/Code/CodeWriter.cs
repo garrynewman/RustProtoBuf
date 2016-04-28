@@ -174,11 +174,12 @@ namespace SilentOrbit.Code
             Indent();
         }
 
-        public void ForeachBracket(string str)
+        public void ForeachBracket( string strName, string strCollectionName )
         {
-            WriteLine("foreach (" + str + ")");
+            WriteLine("for ( int i=0; i <" + strCollectionName + ".Count; i++)");
             WriteLine("{");
             Indent();
+            WriteLine( "var " + strName + " = " + strCollectionName + "[i];" );
         }
 
         public void EndBracket()

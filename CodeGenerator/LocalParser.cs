@@ -19,8 +19,14 @@ namespace SilentOrbit.ProtocolBuffers
                     message.OptionPreserveUnknown = true;
                     break;
                 case "external":
-                    message.OptionExternal = true;
+                    message.OptionExternal = true;				
                     break;
+				case "nopartials":
+					message.OptionNoPartials = true;
+					break;
+				case "noinstancing":
+					message.OptionNoInstancing = true;
+					break;
                 default:
                     throw new NotImplementedException("Unknown option: " + flag);
             }
@@ -40,6 +46,9 @@ namespace SilentOrbit.ProtocolBuffers
                 case "type":
                     message.OptionType = value;
                     break;
+				case "baseclass":
+					message.OptionBase = value;
+					break;
                 case "buffer":
                     message.BufferSize = int.Parse(value);
                     break;
@@ -76,6 +85,9 @@ namespace SilentOrbit.ProtocolBuffers
                 case "buffer":
                     field.BufferSize = int.Parse(value);
                     break;
+				case "references":
+					field.OptionUseReferences = Boolean.Parse( value );
+					break;
                 default:
                     throw new NotImplementedException("Unknown field option: " + key);
             }

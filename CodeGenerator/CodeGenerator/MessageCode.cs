@@ -109,12 +109,12 @@ namespace SilentOrbit.ProtocolBuffers
             if (f.Rule == FieldRule.Repeated)
                 type = "List<" + type + ">";
 
-            if (f.OptionReadOnly)
+            if ( f.OptionReadOnly )
                 return f.OptionAccess + " readonly " + type + " " + f.CsName + " = new " + type + "();";
-            else if (f.ProtoType is ProtoMessage && f.ProtoType.OptionType == "struct")
-                return f.OptionAccess + " " + type + " " + f.CsName + ";";
+            else if ( f.ProtoType is ProtoMessage && f.ProtoType.OptionType == "struct" )
+                return "[System.NonSerialized] " + f.OptionAccess + " " + type + " " + f.CsName + ";";
             else
-                return f.OptionAccess + " " + type + " " + f.CsName + " { get; set; }";
+                return "[System.NonSerialized] " + f.OptionAccess + " " + type + " " + f.CsName + ";";// { get; set; }";
         }
     }
 }
