@@ -424,7 +424,8 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.EndBracketSpace();
 
                 cw.Bracket( "public virtual void WriteToStreamDelta( Stream stream, " + m.CsType + " previous )" );
-                cw.WriteLine( "SerializeDelta( stream, this, previous );" );
+                cw.WriteLine( "if ( previous == null ) Serialize( stream, this );" );
+                cw.WriteLine( "else SerializeDelta( stream, this, previous );" );
                 cw.EndBracketSpace();
 
                 cw.Bracket( "public virtual void ReadFromStream( Stream stream, int size, bool isDelta = false )" );
