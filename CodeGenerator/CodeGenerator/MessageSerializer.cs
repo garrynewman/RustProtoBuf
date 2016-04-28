@@ -587,7 +587,13 @@ namespace SilentOrbit.ProtocolBuffers
                             }
                             else
                             {
+                                cw.IfBracket( "this." + f.CsName + " != null" );
                                 cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ".Copy();" );
+                                cw.EndBracket();
+                                cw.WriteLine( "else" );
+                                cw.Bracket();
+                                cw.WriteLine( "instance." + f.CsName + " = null;" );
+                                cw.EndBracket();
                             }
                             break;
                         }
