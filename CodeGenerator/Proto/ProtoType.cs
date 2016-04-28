@@ -104,7 +104,12 @@ namespace SilentOrbit.ProtocolBuffers
 		/// Don't create new instances of this class
 		/// </summary>
 		public bool OptionNoInstancing { get; set; }
-		
+
+        /// <summary>
+        /// Can directly compare these objects
+        /// </summary>
+        public bool OptionDeltaCompare { get; set; }
+
 
         /// <summary>
         /// Can be "class", "struct" or "interface"

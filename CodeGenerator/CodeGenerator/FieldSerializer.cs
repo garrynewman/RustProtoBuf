@@ -138,7 +138,7 @@ namespace SilentOrbit.ProtocolBuffers
                 if (f.Rule == FieldRule.Repeated || instance == null)
                     return m.FullSerializerType + ".DeserializeLengthDelimited(" + stream + ")";
                 else
-                    return m.FullSerializerType + ".DeserializeLengthDelimited(" + stream + ", " + instance + ")";
+                    return m.FullSerializerType + ".DeserializeLengthDelimited(" + stream + ", " + instance + ", isDelta )";
             }
 
             if (f.ProtoType is ProtoEnum)
@@ -255,8 +255,17 @@ namespace SilentOrbit.ProtocolBuffers
         /// <summary>
         /// Generates code for writing one field
         /// </summary>
-        public static void FieldWriter(ProtoMessage m, Field f, CodeWriter cw)
+        public static void FieldWriter(ProtoMessage m, Field f, CodeWriter cw, bool hasPrevious = false )
         {
+            var canDelta = f.ProtoType.OptionDeltaCompare;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.String ) canDelta = true;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.Float ) canDelta = true;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.Fixed32 ) canDelta = true;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.Int32 ) canDelta = true;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.UInt32 ) canDelta = true;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.UInt64 ) canDelta = true;
+            if ( f.ProtoType.ProtoName == ProtoBuiltin.Double ) canDelta = true;
+
             if (f.Rule == FieldRule.Repeated)
             {
                 if (f.OptionPacked == true)
@@ -274,7 +283,7 @@ namespace SilentOrbit.ProtocolBuffers
                             //cw.WriteLine("BinaryWriter bw" + f.ID + " = new BinaryWriter(ms" + f.ID + ");");
 
                         cw.ForeachBracket( "i" + f.ID, "instance." + f.CsName );
-                        cw.WriteLine(FieldWriterType(f, "msField", "bw" + f.ID, "i" + f.ID));
+                        cw.WriteLine(FieldWriterType(f, "msField", "bw" + f.ID, "i" + f.ID, hasPrevious ) );
                         cw.EndBracket();
 
                         BytesWriter(f, "stream", cw);
@@ -288,7 +297,7 @@ namespace SilentOrbit.ProtocolBuffers
                         cw.WriteLine("global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteUInt32(stream, " + f.ProtoType.WireSize + "u * (uint)instance." + f.CsName + ".Count);");
 
                         cw.ForeachBracket( "i" + f.ID, "instance." + f.CsName );
-                        cw.WriteLine(FieldWriterType(f, "stream", "bw", "i" + f.ID));
+                        cw.WriteLine(FieldWriterType(f, "stream", "bw", "i" + f.ID, hasPrevious ) );
                         cw.EndBracket();
                     }
                     cw.EndBracket();
@@ -299,7 +308,7 @@ namespace SilentOrbit.ProtocolBuffers
                     cw.IfBracket("instance." + f.CsName + " != null");
                     cw.ForeachBracket( "i" + f.ID, "instance." + f.CsName );
                     KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
-                    cw.WriteLine(FieldWriterType(f, "stream", "bw", "i" + f.ID));
+                    cw.WriteLine(FieldWriterType(f, "stream", "bw", "i" + f.ID, hasPrevious ) );
                     cw.EndBracket();
                     cw.EndBracket();
                 }
@@ -313,9 +322,16 @@ namespace SilentOrbit.ProtocolBuffers
                 {
                     if (f.ProtoType.Nullable) //Struct always exist, not optional
                         cw.IfBracket("instance." + f.CsName + " != null");
+
+                    if ( hasPrevious && canDelta )
+                        cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
+
                     KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
-                    cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName));
+                    cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
                     if (f.ProtoType.Nullable) //Struct always exist, not optional
+                        cw.EndBracket();
+
+                    if ( hasPrevious && canDelta ) 
                         cw.EndBracket();
                     return;
                 }
@@ -324,17 +340,27 @@ namespace SilentOrbit.ProtocolBuffers
                     if (f.OptionDefault != null)
                         cw.IfBracket("instance." + f.CsName + " != " + f.ProtoType.CsType + "." + f.OptionDefault);
                     KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
-                    cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName));
+                    cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
                     if (f.OptionDefault != null)
                         cw.EndBracket();
                     return;
                 }
+
+                if ( hasPrevious && canDelta )
+                    cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
+
                 KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
-                cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName));
+                cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
+
+                if ( hasPrevious && canDelta )
+                    cw.EndBracket();
                 return;
             }
             else if (f.Rule == FieldRule.Required)
             {
+                if ( hasPrevious && canDelta )
+                    cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
+
                 if (f.ProtoType is ProtoMessage && f.ProtoType.OptionType != "struct" ||
                     f.ProtoType.ProtoName == ProtoBuiltin.String ||
                     f.ProtoType.ProtoName == ProtoBuiltin.Bytes)
@@ -343,13 +369,17 @@ namespace SilentOrbit.ProtocolBuffers
                     cw.WriteIndent("throw new ArgumentNullException(\"" + f.CsName + "\", \"Required by proto specification.\");");
                 }
                 KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
-                cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName));
+                cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
+
+                if ( hasPrevious && canDelta )
+                    cw.EndBracket();
+
                 return;
             }
             throw new NotImplementedException("Unknown rule: " + f.Rule);
         }
 
-        static string FieldWriterType(Field f, string stream, string binaryWriter, string instance)
+        static string FieldWriterType(Field f, string stream, string binaryWriter, string instance, bool hasPrevious )
         {
             if (f.OptionCodeType != null)
             {
@@ -357,15 +387,15 @@ namespace SilentOrbit.ProtocolBuffers
                 {
                     case "DateTime":
                     case "TimeSpan":
-                        return FieldWriterPrimitive(f, stream, binaryWriter, instance + ".Ticks");
+                        return FieldWriterPrimitive(f, stream, binaryWriter, instance + ".Ticks", hasPrevious );
                     default: //enum
                         break;
                 }
             }
-            return FieldWriterPrimitive(f, stream, binaryWriter, instance);
+            return FieldWriterPrimitive(f, stream, binaryWriter, instance, hasPrevious );
         }
 
-        static string FieldWriterPrimitive(Field f, string stream, string binaryWriter, string instance)
+        static string FieldWriterPrimitive(Field f, string stream, string binaryWriter, string instance, bool hasPrevious )
         {
 
             if (f.ProtoType is ProtoEnum)
@@ -376,7 +406,12 @@ namespace SilentOrbit.ProtocolBuffers
                 ProtoMessage pm = f.ProtoType as ProtoMessage;
                 CodeWriter cw = new CodeWriter();
                 cw.WriteLine("msField.SetLength(0);");
-                cw.WriteLine(pm.FullSerializerType + ".Serialize(msField, " + instance + ");");
+
+                if ( hasPrevious )
+                    cw.WriteLine( pm.FullSerializerType + ".SerializeDelta(msField, " + instance + ", " + instance.Replace( "instance.", "previous." ) + " );" );
+                else 
+                    cw.WriteLine(pm.FullSerializerType + ".Serialize(msField, " + instance + ");");
+
                 BytesWriter(f, stream, cw);
                 return cw.Code;
             }

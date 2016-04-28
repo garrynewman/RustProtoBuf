@@ -57,46 +57,46 @@ namespace SilentOrbit.ProtocolBuffers
 				if ( !m.OptionNoInstancing )
 				{
 					cw.Summary( "Helper: create a new instance to deserializing into" );
-					cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(Stream stream)" );
+					cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(Stream stream )" );
                     GenerateCreateNew( cw, "instance", m );
-                    cw.WriteLine( "Deserialize(stream, " + refstr + "instance);" );
+                    cw.WriteLine( "Deserialize(stream, " + refstr + "instance, false );" );
 					cw.WriteLine( "return instance;" );
                 cw.EndBracketSpace();
 
 					cw.Summary( "Helper: create a new instance to deserializing into" );
-					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLengthDelimited(Stream stream)" );
+					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLengthDelimited(Stream stream )" );
                     GenerateCreateNew( cw, "instance", m );
-                    cw.WriteLine( "DeserializeLengthDelimited(stream, " + refstr + "instance);" );
+                    cw.WriteLine( "DeserializeLengthDelimited(stream, " + refstr + "instance, false );" );
 					cw.WriteLine( "return instance;" );
 					cw.EndBracketSpace();
 
 					cw.Summary( "Helper: create a new instance to deserializing into" );
-					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLength(Stream stream, int length)" );
+					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLength(Stream stream, int length )" );
                     GenerateCreateNew( cw, "instance", m );
-                    cw.WriteLine( "DeserializeLength(stream, length, " + refstr + "instance);" );
+                    cw.WriteLine( "DeserializeLength(stream, length, " + refstr + "instance, false );" );
 					cw.WriteLine( "return instance;" );
                 cw.EndBracketSpace();
 
                     cw.Summary( "Helper: put the buffer into a MemoryStream and create a new instance to deserializing into" );
-                    cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(byte[] buffer)" );
+                    cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(byte[] buffer )" );
                     GenerateCreateNew( cw, "instance", m );
                     cw.WriteLine( "using (var ms = new MemoryStream(buffer))" );
-                    cw.WriteIndent( "Deserialize(ms, " + refstr + "instance);" );
+                    cw.WriteIndent( "Deserialize(ms, " + refstr + "instance, false );" );
                     cw.WriteLine( "return instance;" );
                     cw.EndBracketSpace();
                 }
 
 				cw.Summary( "Load this value from a proto buffer" );
-				cw.Bracket( m.OptionAccess + " void FromProto(Stream stream)" );
-				cw.WriteLine( "Deserialize(stream, this );" );
+				cw.Bracket( m.OptionAccess + " void FromProto(Stream stream, bool isDelta = false)" );
+				cw.WriteLine( "Deserialize(stream, this, isDelta );" );
                 cw.EndBracketSpace();
 
             }
 
             cw.Summary("Helper: put the buffer into a MemoryStream before deserializing");
-            cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " Deserialize(byte[] buffer, " + refstr + m.FullCsType + " instance)");
+            cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " Deserialize(byte[] buffer, " + refstr + m.FullCsType + " instance, bool isDelta = false )");
             cw.WriteLine("using (var ms = new MemoryStream(buffer))");
-            cw.WriteIndent("Deserialize(ms, " + refstr + "instance);");
+            cw.WriteIndent("Deserialize(ms, " + refstr + "instance, isDelta );" );
             cw.WriteLine("return instance;");
             cw.EndBracketSpace();
             #endregion
@@ -114,25 +114,27 @@ namespace SilentOrbit.ProtocolBuffers
                 if (method == "Deserialize")
                 {
                     cw.Summary("Takes the remaining content of the stream and deserialze it into the instance.");
-                    cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " " + method + "(Stream stream, " + refstr + m.FullCsType + " instance)");
+                    cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " " + method + "(Stream stream, " + refstr + m.FullCsType + " instance, bool isDelta )" );
                 }
                 else if (method == "DeserializeLengthDelimited")
                 {
                     cw.Summary("Read the VarInt length prefix and the given number of bytes from the stream and deserialze it into the instance.");
-                    cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " " + method + "(Stream stream, " + refstr + m.FullCsType + " instance)");
+                    cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " " + method + "(Stream stream, " + refstr + m.FullCsType + " instance, bool isDelta )");
                 }
                 else if (method == "DeserializeLength")
                 {
                     cw.Summary("Read the given number of bytes from the stream and deserialze it into the instance.");
-                    cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " " + method + "(Stream stream, int length, " + refstr + m.FullCsType + " instance)");
+                    cw.Bracket(m.OptionAccess + " static " + m.FullCsType + " " + method + "(Stream stream, int length, " + refstr + m.FullCsType + " instance, bool isDelta )" );
                 }
                 else
                     throw new NotImplementedException();
 
-               // if (m.IsUsingBinaryWriter)
-               //     cw.WriteLine("BinaryReader br = new BinaryReader(stream);");
+                // if (m.IsUsingBinaryWriter)
+                //     cw.WriteLine("BinaryReader br = new BinaryReader(stream);");
 
                 //Prepare List<> and default values
+                cw.IfBracket( "!isDelta" );
+
                 foreach (Field f in m.Fields.Values)
                 {
                     if (f.Rule == FieldRule.Repeated)
@@ -166,6 +168,7 @@ namespace SilentOrbit.ProtocolBuffers
                         }
                     }
                 }
+                cw.EndBracket();
 
                 if (method == "DeserializeLengthDelimited")
                 {
@@ -420,8 +423,12 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.WriteLine( "Serialize( stream, this );" );
                 cw.EndBracketSpace();
 
-                cw.Bracket( "public virtual void ReadFromStream( Stream stream, int size )" );
-                cw.WriteLine( "DeserializeLength( stream, size, this );" );
+                cw.Bracket( "public virtual void WriteToStreamDelta( Stream stream, " + m.CsType + " previous )" );
+                cw.WriteLine( "SerializeDelta( stream, this, previous );" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( "public virtual void ReadFromStream( Stream stream, int size, bool isDelta = false )" );
+                cw.WriteLine( "DeserializeLength( stream, size, this, isDelta );" );
                 cw.EndBracketSpace();
             }
         }
@@ -429,15 +436,39 @@ namespace SilentOrbit.ProtocolBuffers
         /// <summary>
         /// Generates code for writing a class/message
         /// </summary>
-        static void GenerateWriter(ProtoMessage m, CodeWriter cw, Options options)
+        static void GenerateWriter( ProtoMessage m, CodeWriter cw, Options options )
         {
             string stack = "global::SilentOrbit.ProtocolBuffers.ProtocolParser.Stack";
-            if (options.ExperimentalStack != null)
-        {
+            if ( options.ExperimentalStack != null )
+            {
                 throw new System.NotSupportedException();
-                cw.WriteLine("[ThreadStatic]");
-                cw.WriteLine("static global::SilentOrbit.ProtocolBuffers.MemoryStreamStack stack = new " + options.ExperimentalStack + "();");
+                cw.WriteLine( "[ThreadStatic]" );
+                cw.WriteLine( "static global::SilentOrbit.ProtocolBuffers.MemoryStreamStack stack = new " + options.ExperimentalStack + "();" );
                 stack = "stack";
+            }
+
+            // SerializeDelta
+            {
+                cw.Summary( "Serialize the instance into the stream, using the delta from the previous" );
+                cw.Bracket( m.OptionAccess + " static void SerializeDelta(Stream stream, " + m.CsType + " instance, " + m.CsType + " previous )" );
+
+                if ( m.OptionTriggers )
+                {
+                    cw.WriteLine( "instance.BeforeSerialize();" );
+                    cw.WriteLine();
+                }
+
+                cw.WriteLine( "var msField = Facepunch.Pool.Get<MemoryStream>();" );
+
+                foreach ( Field f in m.Fields.Values )
+                {
+                    FieldSerializer.FieldWriter( m, f, cw, true );
+                }
+
+                cw.WriteLine( "Facepunch.Pool.FreeMemoryStream( ref msField );" );
+
+                cw.EndBracket();
+                cw.WriteLine();
             }
 
             cw.Summary("Serialize the instance into the stream");

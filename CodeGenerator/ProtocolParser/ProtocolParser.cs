@@ -14,7 +14,7 @@ namespace SilentOrbit.ProtocolBuffers
     public interface IProto
     {
         void WriteToStream( Stream stream );
-        void ReadFromStream( Stream stream, int size );
+        void ReadFromStream( Stream stream, int size, bool isDelta = false );
     }
 
     public static partial class ProtocolParser

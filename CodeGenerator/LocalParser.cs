@@ -27,6 +27,9 @@ namespace SilentOrbit.ProtocolBuffers
 				case "noinstancing":
 					message.OptionNoInstancing = true;
 					break;
+                case "deltacompare":
+                    message.OptionDeltaCompare = true;
+                    break;
                 default:
                     throw new NotImplementedException("Unknown option: " + flag);
             }
