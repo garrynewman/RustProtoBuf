@@ -49,16 +49,8 @@ then write the code and the changes in a separate file.");
                     {
                         if (ns != null) //First time
                             cw.EndBracket();
-
-						if ( m.CsNamespace == "global" )
-						{
-							ns = null;
-						}
-						else
-						{
-							cw.Bracket( "namespace " + m.CsNamespace );
-							ns = m.CsNamespace;
-						}
+                        cw.Bracket("namespace " + m.CsNamespace);
+                        ns = m.CsNamespace;
                     }
                     MessageCode.GenerateClass(m, cw, options);
                     cw.WriteLine();
@@ -77,8 +69,7 @@ then write the code and the changes in a separate file.");
                     cw.WriteLine();
                 }
 
-				if ( ns != null )
-					cw.EndBracket();
+                cw.EndBracket();
             }
 
             //.Serializer.cs
@@ -100,32 +91,19 @@ This file will be overwritten when CodeGenerator is run.");
                 cw.WriteLine("using System.Collections.Generic;");
                 cw.WriteLine();
 
-				cw.WriteLine( "#pragma warning disable 0472, 0162" );
-				cw.WriteLine();
-
-				string ns = null; //avoid writing namespace between classes if they belong to the same
+                string ns = null; //avoid writing namespace between classes if they belong to the same
                 foreach (ProtoMessage m in file.Messages.Values)
                 {
                     if (ns != m.CsNamespace)
                     {
                         if (ns != null) //First time
                             cw.EndBracket();
-
-						if ( m.CsNamespace == "global" )
-						{
-							ns = null;
-						}
-						else
-						{
-							cw.Bracket( "namespace " + m.CsNamespace );
-							ns = m.CsNamespace;
-						}
+                        cw.Bracket("namespace " + m.CsNamespace);
+                        ns = m.CsNamespace;
                     }
-                    MessageSerializer.GenerateClassSerializer(m, cw);
+                    MessageSerializer.GenerateClassSerializer(m, cw, options);
                 }
-
-				if ( ns != null )
-					cw.EndBracket();
+                cw.EndBracket();
             }
 
             string libPath = Path.Combine(Path.GetDirectoryName(csPath), "ProtocolParser.cs");
@@ -133,8 +111,10 @@ This file will be overwritten when CodeGenerator is run.");
             {
                 codeWriter.NewLine = "\r\n";
                 ReadCode(codeWriter, "ProtocolParser", true);
+                ReadCode(codeWriter, "ProtocolParserExceptions", false);
                 ReadCode(codeWriter, "ProtocolParserFixed", false);
                 ReadCode(codeWriter, "ProtocolParserKey", false);
+                ReadCode(codeWriter, "ProtocolParserMemory", false);
                 ReadCode(codeWriter, "ProtocolParserVarInt", false);
             }
         }

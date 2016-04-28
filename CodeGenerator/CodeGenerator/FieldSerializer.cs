@@ -19,7 +19,7 @@ namespace SilentOrbit.ProtocolBuffers
                 //Make sure we are not reading a list of interfaces
                 if (f.ProtoType.OptionType == "interface")
                 {
-                    cw.WriteLine("throw new InvalidOperationException(\"Can't deserialize a list of interfaces\");");
+                    cw.WriteLine("throw new NotSupportedException(\"Can't deserialize a list of interfaces\");");
                     return false;
                 }
 
@@ -33,7 +33,7 @@ namespace SilentOrbit.ProtocolBuffers
                     cw.EndBracket();
 
                     cw.WriteLine("if (stream.Position != end" + f.ID + ")");
-                    cw.WriteIndent("throw new InvalidDataException(\"Read too many bytes in packed data\");");
+                    cw.WriteIndent("throw new global::SilentOrbit.ProtocolBuffers.ProtocolBufferException(\"Read too many bytes in packed data\");");
                 }
                 else
                 {
@@ -58,20 +58,9 @@ namespace SilentOrbit.ProtocolBuffers
 
                 if (f.ProtoType is ProtoMessage)
                 {
-                    if ( f.ProtoType.OptionType == "struct")
+                    if (f.ProtoType.OptionType == "struct")
                     {
-						if ( f.OptionUseReferences )
-						{
-							cw.WriteLine( FieldReaderType( f, "stream", "br", "ref instance." + f.CsName ) + ";" );
-						}
-						else
-						{
-							cw.WriteLine( "{" );
-							cw.WriteIndent( "var a = instance." + f.CsName + ";" );
-							cw.WriteIndent( "instance." + f.CsName + " = " + FieldReaderType( f, "stream", "br", "ref a" ) + ";" );
-							cw.WriteLine( "}" );
-						}
-                        
+                        cw.WriteLine(FieldReaderType(f, "stream", "br", "ref instance." + f.CsName) + ";");
                         return true;
                     }
 
@@ -108,7 +97,7 @@ namespace SilentOrbit.ProtocolBuffers
                             case ProtoBuiltin.SFixed64:
                                 return "new DateTime((long)" + FieldReaderPrimitive(f, stream, binaryReader, instance) + ")";
                         }
-                        throw new FormatException("Local feature, DateTime, must be stored in a 64 bit field");
+                        throw new ProtoFormatException("Local feature, DateTime, must be stored in a 64 bit field", f.Source);
 
                     case "TimeSpan":
                         switch (f.ProtoType.ProtoName)
@@ -119,7 +108,7 @@ namespace SilentOrbit.ProtocolBuffers
                             case ProtoBuiltin.SFixed64:
                                 return "new TimeSpan((long)" + FieldReaderPrimitive(f, stream, binaryReader, instance) + ")";
                         }
-                        throw new FormatException("Local feature, TimeSpan, must be stored in a 64 bit field");
+                        throw new ProtoFormatException("Local feature, TimeSpan, must be stored in a 64 bit field", f.Source);
 
                     default:
                         //Assume enum
@@ -204,36 +193,20 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         static void VarintWriter(string stream, uint value, CodeWriter cw)
         {
-            List<byte> bytes = new List<byte>();
-
             while (true)
             {
                 byte b = (byte)(value & 0x7F);
                 value = value >> 7;
                 if (value == 0)
                 {
-                    bytes.Add(b);
+                    cw.WriteLine(stream + ".WriteByte(" + b + ");");
                     break;
                 }
 
                 //Write part of value
                 b |= 0x80;
-                bytes.Add(b);
+                cw.WriteLine(stream + ".WriteByte(" + b + ");");
             }
-
-            //Write final byte
-            if (bytes.Count == 1)
-            {
-                cw.WriteLine(stream + ".WriteByte(" + bytes[0] + ");");
-                return;
-            }
-
-            string line = stream + ".Write(new byte[]{";
-            foreach (byte v in bytes)
-                line += v + ", ";
-            line = line.TrimEnd(new char[] { ' ', ',' });
-            line += "}, 0, " + bytes.Count + ");";
-            cw.WriteLine(line);
         }
 
         /// <summary>
@@ -407,7 +380,7 @@ namespace SilentOrbit.ProtocolBuffers
                 case ProtoBuiltin.Int64:
                     return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteUInt64(" + stream + ",(ulong)" + instance + ");";
                 case ProtoBuiltin.UInt32:
-                    return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteUInt32(" + stream + ",(uint)" + instance + ");";
+                    return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteUInt32(" + stream + ", " + instance + ");";
                 case ProtoBuiltin.UInt64:
                     return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteUInt64(" + stream + ", " + instance + ");";
                 case ProtoBuiltin.SInt32:

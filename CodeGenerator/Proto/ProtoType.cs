@@ -45,13 +45,7 @@ namespace SilentOrbit.ProtocolBuffers
 
         public virtual string FullCsType
         {
-            get 
-			{
-				if ( CsNamespace == "global" )
-					return CsNamespace + "::" + CsType;
-
-				return CsNamespace + "." + CsType; 
-			}
+            get { return CsNamespace + "." + CsType; }
         }
 
         /// <summary>
@@ -95,26 +89,10 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public bool OptionExternal { get; set; }
 
-		/// <summary>
-		/// Don't create partial classes.. because this class/struct/whatever is external
-		/// </summary>
-		public bool OptionNoPartials { get; set; }
-
-		/// <summary>
-		/// Don't create new instances of this class
-		/// </summary>
-		public bool OptionNoInstancing { get; set; }
-		
-
         /// <summary>
         /// Can be "class", "struct" or "interface"
         /// </summary>
         public string OptionType { get; set; }
-
-		/// <summary>
-		/// This classes base class
-		/// </summary>
-		public string OptionBase { get; set; }
 
         /// <summary>
         /// Initial capacity of allocated MemoryStream when Serializing this object.
@@ -146,8 +124,6 @@ namespace SilentOrbit.ProtocolBuffers
             this.OptionTriggers = false;
             this.OptionPreserveUnknown = false;
             this.OptionExternal = false;
-			this.OptionNoPartials = false;
-			this.OptionNoInstancing = false;
             this.OptionType = null;
         }
 

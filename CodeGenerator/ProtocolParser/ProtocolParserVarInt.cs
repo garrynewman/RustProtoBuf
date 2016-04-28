@@ -35,7 +35,7 @@ namespace SilentOrbit.ProtocolBuffers
                 if ((b & 0x80) == 0)
                     break; //end of varint
                 if (offset >= buffer.Length)
-                    throw new InvalidDataException("VarInt too long, more than 10 bytes");
+                    throw new ProtocolBufferException("VarInt too long, more than 10 bytes");
             }
             byte[] ret = new byte[offset];
             Array.Copy(buffer, ret, ret.Length);
@@ -100,7 +100,7 @@ namespace SilentOrbit.ProtocolBuffers
 
                 //Check that it fits in 32 bits
                 if ((n == 4) && (b & 0xF0) != 0)
-                    throw new InvalidDataException("Got larger VarInt than 32bit unsigned");
+                    throw new ProtocolBufferException("Got larger VarInt than 32bit unsigned");
                 //End of check
 
                 if ((b & 0x80) == 0)
@@ -109,7 +109,7 @@ namespace SilentOrbit.ProtocolBuffers
                 val |= (uint)(b & 0x7F) << (7 * n);
             }
 
-            throw new InvalidDataException("Got larger VarInt than 32bit unsigned");
+            throw new ProtocolBufferException("Got larger VarInt than 32bit unsigned");
         }
 
         /// <summary>
@@ -117,22 +117,22 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static void WriteUInt32(Stream stream, uint val)
         {
-            byte[] buffer = new byte[5];
-            int count = 0;
-
+            byte b;
             while (true)
             {
-                buffer[count] = (byte)(val & 0x7F);
+                b = (byte)(val & 0x7F);
                 val = val >> 7;
                 if (val == 0)
+                {
+                    stream.WriteByte(b);
                     break;
-
-                buffer[count] |= 0x80;
-
-                count += 1;
+                }
+                else
+                {
+                    b |= 0x80;
+                    stream.WriteByte(b);
+                }
             }
-
-            stream.Write(buffer, 0, count + 1);
         }
 
         #endregion
@@ -192,7 +192,7 @@ namespace SilentOrbit.ProtocolBuffers
 
                 //Check that it fits in 64 bits
                 if ((n == 9) && (b & 0xFE) != 0)
-                    throw new InvalidDataException("Got larger VarInt than 64 bit unsigned");
+                    throw new ProtocolBufferException("Got larger VarInt than 64 bit unsigned");
                 //End of check
 
                 if ((b & 0x80) == 0)
@@ -201,7 +201,7 @@ namespace SilentOrbit.ProtocolBuffers
                 val |= (ulong)(b & 0x7F) << (7 * n);
             }
 
-            throw new InvalidDataException("Got larger VarInt than 64 bit unsigned");
+            throw new ProtocolBufferException("Got larger VarInt than 64 bit unsigned");
         }
 
         /// <summary>
@@ -209,22 +209,22 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static void WriteUInt64(Stream stream, ulong val)
         {
-            byte[] buffer = new byte[10];
-            int count = 0;
-
+            byte b;
             while (true)
             {
-                buffer[count] = (byte)(val & 0x7F);
+                b = (byte)(val & 0x7F);
                 val = val >> 7;
                 if (val == 0)
+                {
+                    stream.WriteByte(b);
                     break;
-
-                buffer[count] |= 0x80;
-
-                count += 1;
+                }
+                else
+                {
+                    b |= 0x80;
+                    stream.WriteByte(b);
+                }
             }
-
-            stream.Write(buffer, 0, count + 1);
         }
 
         #endregion
@@ -240,7 +240,7 @@ namespace SilentOrbit.ProtocolBuffers
                 return true;
             if (b == 0)
                 return false;
-            throw new InvalidDataException("Invalid boolean value");
+            throw new ProtocolBufferException("Invalid boolean value");
         }
 
         public static void WriteBool(Stream stream, bool val)

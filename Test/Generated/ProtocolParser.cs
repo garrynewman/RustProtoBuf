@@ -2,6 +2,8 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 // 
 //  Read/Write string and byte arrays 
@@ -10,7 +12,6 @@ namespace SilentOrbit.ProtocolBuffers
 {
     public static partial class ProtocolParser
     {
-
         public static string ReadString(Stream stream)
         {
             return Encoding.UTF8.GetString(ReadBytes(stream));
@@ -31,7 +32,7 @@ namespace SilentOrbit.ProtocolBuffers
             {
                 int r = stream.Read(buffer, read, length - read);
                 if (r == 0)
-                    throw new InvalidDataException("Expected " + (length - read) + " got " + read);
+                    throw new ProtocolBufferException("Expected " + (length - read) + " got " + read);
                 read += r;
             }
             return buffer;
@@ -66,10 +67,20 @@ namespace SilentOrbit.ProtocolBuffers
 
     }
 
+    [Obsolete("Renamed to PositionStream")]
+    public class StreamRead : PositionStream
+    {
+        public StreamRead (Stream baseStream) : base(baseStream)
+        {
+            
+        }
+    }
+
     /// <summary>
-    /// Wrapper for streams that does not support the Position property
+    /// Wrapper for streams that does not support the Position property.
+    /// Adds support for the Position property.
     /// </summary>
-    public class StreamRead : Stream
+    public class PositionStream : Stream
     {
         Stream stream;
 
@@ -87,7 +98,7 @@ namespace SilentOrbit.ProtocolBuffers
         /// <param name='maxLength'>
         /// Max length allowed to read from the stream.
         /// </param>
-        public StreamRead(Stream baseStream)
+        public PositionStream(Stream baseStream)
         {
             this.stream = baseStream;
         }
@@ -168,6 +179,36 @@ namespace SilentOrbit.ProtocolBuffers
             {
                 throw new NotImplementedException();
             }
+        }
+
+        public override void Close()
+        {
+            base.Close();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            stream.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+}
+
+#endregion
+#region ProtocolParserExceptions
+//
+// Exception used in the generated code
+//
+
+namespace SilentOrbit.ProtocolBuffers
+{
+    ///<summary>>
+    /// This exception is thrown when badly formatted protocol buffer data is read.
+    ///</summary>
+    public class ProtocolBufferException : Exception
+    {
+        public ProtocolBufferException(string message) : base(message)
+        {
         }
     }
 }
@@ -453,6 +494,157 @@ namespace SilentOrbit.ProtocolBuffers
 }
 
 #endregion
+#region ProtocolParserMemory
+
+/// <summary>
+/// MemoryStream management
+/// </summary>
+namespace SilentOrbit.ProtocolBuffers
+{
+    public interface MemoryStreamStack : IDisposable
+    {
+        MemoryStream Pop();
+
+        void Push(MemoryStream stream);
+    }
+
+    /// <summary>
+    /// Thread safe stack of memory streams
+    /// </summary>
+    public class ThreadSafeStack : MemoryStreamStack
+    {
+        Stack<MemoryStream> stack = new Stack<MemoryStream>();
+
+        /// <summary>
+        /// The returned stream is not reset.
+        /// You must call .SetLength(0) before using it.
+        /// This is done in the generated code.
+        /// </summary>
+        public MemoryStream Pop()
+        {
+            lock (stack)
+            {
+                if (stack.Count == 0)
+                    return new MemoryStream();
+                else
+                    return stack.Pop();
+            }
+        }
+
+        public void Push(MemoryStream stream)
+        {
+            lock (stack)
+            {
+                stack.Push(stream);
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (stack)
+            {
+                stack.Clear();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Non-thread safe stack of memory streams
+    /// Safe as long as only one thread is Serializing
+    /// </summary>
+    public class ThreadUnsafeStack : MemoryStreamStack
+    {
+        Stack<MemoryStream> stack = new Stack<MemoryStream>();
+
+        /// <summary>
+        /// The returned stream is not reset.
+        /// You must call .SetLength(0) before using it.
+        /// This is done in the generated code.
+        /// </summary>
+        public MemoryStream Pop()
+        {
+            if (stack.Count == 0)
+                return new MemoryStream();
+            else
+                return stack.Pop();
+        }
+
+        public void Push(MemoryStream stream)
+        {
+            stack.Push(stream);
+        }
+
+        public void Dispose()
+        {
+            stack.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Unoptimized stack, allocates a new MemoryStream for every request.
+    /// </summary>
+    public class AllocationStack : MemoryStreamStack
+    {
+        /// <summary>
+        /// The returned stream is not reset.
+        /// You must call .SetLength(0) before using it.
+        /// This is done in the generated code.
+        /// </summary>
+        public MemoryStream Pop()
+        {
+            return new MemoryStream();
+        }
+
+        public void Push(MemoryStream stream)
+        {
+            //No need to Dispose MemoryStream
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    public class ConcurrentBagStack : MemoryStreamStack
+    {
+        ConcurrentBag<MemoryStream> bag = new ConcurrentBag<MemoryStream>();
+
+        /// <summary>
+        /// The returned stream is not reset.
+        /// You must call .SetLength(0) before using it.
+        /// This is done in the generated code.
+        /// </summary>
+        public MemoryStream Pop()
+        {
+            MemoryStream result;
+
+            if (bag.TryTake(out result))
+                return result;
+            else
+                return new MemoryStream();
+        }
+
+        public void Push(MemoryStream stream)
+        {
+            bag.Add(stream);
+        }
+
+        public void Dispose()
+        {
+            throw new ApplicationException("ConcurrentBagStack.Dispose() should not be called.");
+        }
+    }
+
+    public static partial class ProtocolParser
+    {
+        /// <summary>
+        /// Experimental stack of MemoryStream
+        /// </summary>
+        public static MemoryStreamStack Stack = new AllocationStack();
+    }
+}
+
+#endregion
 #region ProtocolParserVarInt
 
 namespace SilentOrbit.ProtocolBuffers
@@ -489,7 +681,7 @@ namespace SilentOrbit.ProtocolBuffers
                 if ((b & 0x80) == 0)
                     break; //end of varint
                 if (offset >= buffer.Length)
-                    throw new InvalidDataException("VarInt too long, more than 10 bytes");
+                    throw new ProtocolBufferException("VarInt too long, more than 10 bytes");
             }
             byte[] ret = new byte[offset];
             Array.Copy(buffer, ret, ret.Length);
@@ -554,7 +746,7 @@ namespace SilentOrbit.ProtocolBuffers
 
                 //Check that it fits in 32 bits
                 if ((n == 4) && (b & 0xF0) != 0)
-                    throw new InvalidDataException("Got larger VarInt than 32bit unsigned");
+                    throw new ProtocolBufferException("Got larger VarInt than 32bit unsigned");
                 //End of check
 
                 if ((b & 0x80) == 0)
@@ -563,7 +755,7 @@ namespace SilentOrbit.ProtocolBuffers
                 val |= (uint)(b & 0x7F) << (7 * n);
             }
 
-            throw new InvalidDataException("Got larger VarInt than 32bit unsigned");
+            throw new ProtocolBufferException("Got larger VarInt than 32bit unsigned");
         }
 
         /// <summary>
@@ -571,22 +763,22 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static void WriteUInt32(Stream stream, uint val)
         {
-            byte[] buffer = new byte[5];
-            int count = 0;
-
+            byte b;
             while (true)
             {
-                buffer[count] = (byte)(val & 0x7F);
+                b = (byte)(val & 0x7F);
                 val = val >> 7;
                 if (val == 0)
+                {
+                    stream.WriteByte(b);
                     break;
-
-                buffer[count] |= 0x80;
-
-                count += 1;
+                }
+                else
+                {
+                    b |= 0x80;
+                    stream.WriteByte(b);
+                }
             }
-
-            stream.Write(buffer, 0, count + 1);
         }
 
         #endregion
@@ -646,7 +838,7 @@ namespace SilentOrbit.ProtocolBuffers
 
                 //Check that it fits in 64 bits
                 if ((n == 9) && (b & 0xFE) != 0)
-                    throw new InvalidDataException("Got larger VarInt than 64 bit unsigned");
+                    throw new ProtocolBufferException("Got larger VarInt than 64 bit unsigned");
                 //End of check
 
                 if ((b & 0x80) == 0)
@@ -655,7 +847,7 @@ namespace SilentOrbit.ProtocolBuffers
                 val |= (ulong)(b & 0x7F) << (7 * n);
             }
 
-            throw new InvalidDataException("Got larger VarInt than 64 bit unsigned");
+            throw new ProtocolBufferException("Got larger VarInt than 64 bit unsigned");
         }
 
         /// <summary>
@@ -663,22 +855,22 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static void WriteUInt64(Stream stream, ulong val)
         {
-            byte[] buffer = new byte[10];
-            int count = 0;
-
+            byte b;
             while (true)
             {
-                buffer[count] = (byte)(val & 0x7F);
+                b = (byte)(val & 0x7F);
                 val = val >> 7;
                 if (val == 0)
+                {
+                    stream.WriteByte(b);
                     break;
-
-                buffer[count] |= 0x80;
-
-                count += 1;
+                }
+                else
+                {
+                    b |= 0x80;
+                    stream.WriteByte(b);
+                }
             }
-
-            stream.Write(buffer, 0, count + 1);
         }
 
         #endregion
@@ -694,7 +886,7 @@ namespace SilentOrbit.ProtocolBuffers
                 return true;
             if (b == 0)
                 return false;
-            throw new InvalidDataException("Invalid boolean value");
+            throw new ProtocolBufferException("Invalid boolean value");
         }
 
         public static void WriteBool(Stream stream, bool val)
