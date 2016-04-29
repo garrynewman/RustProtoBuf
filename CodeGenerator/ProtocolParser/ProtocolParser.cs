@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-//using System.Collections.Concurrent;
+using Facepunch.Extend;
 
 // 
 //  Read/Write string and byte arrays 
@@ -24,12 +24,12 @@ namespace SilentOrbit.ProtocolBuffers
         public static float ReadSingle( Stream stream )
         {
             stream.Read( staticBuffer, 0, 4 );
-            return Facepunch.ByteConvert.ToFloat( staticBuffer );
+            return staticBuffer.ReadFloat();
         }
 
         public static void WriteSingle( Stream stream, float f )
         {
-            Facepunch.ByteConvert.FromFloat( staticBuffer, f );
+            staticBuffer.WriteFloat( f );
             stream.Write( staticBuffer, 0, 4 );
         }
 
