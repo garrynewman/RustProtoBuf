@@ -589,7 +589,11 @@ namespace SilentOrbit.ProtocolBuffers
                             else
                             {
                                 cw.IfBracket( "this." + f.CsName + " != null" );
-                                cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ".Copy();" );
+
+                                cw.WriteLine( "if ( instance." + f.CsName + " == null )" );
+                                cw.WriteLine( "   instance." + f.CsName + " = " + "this." + f.CsName + ".Copy();" );
+                                cw.WriteLine( "else" );
+                                cw.WriteLine( "   this." + f.CsName + ".CopyTo( instance." + f.CsName + " );" );
                                 cw.EndBracket();
                                 cw.WriteLine( "else" );
                                 cw.Bracket();
