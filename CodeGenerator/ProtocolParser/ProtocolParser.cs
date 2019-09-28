@@ -4,6 +4,7 @@ using System.Text;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Facepunch.Extend;
+using UnityEngine.Profiling;
 
 // 
 //  Read/Write string and byte arrays 
@@ -21,33 +22,36 @@ namespace SilentOrbit.ProtocolBuffers
     {
         static byte[] staticBuffer = new byte[1024 * 128];
 
-        public static float ReadSingle( Stream stream )
-        {
-            stream.Read( staticBuffer, 0, 4 );
-            return staticBuffer.ReadFloat();
-        }
+		public static float ReadSingle( Stream stream )
+		{
+			stream.Read( staticBuffer, 0, 4 );
+			return staticBuffer.ReadUnsafe<float>();
+		}
 
-        public static void WriteSingle( Stream stream, float f )
-        {
-            staticBuffer.WriteFloat( f );
-            stream.Write( staticBuffer, 0, 4 );
-        }
+		public static void WriteSingle( Stream stream, float f )
+		{
+			staticBuffer.WriteUnsafe( f );
+			stream.Write( staticBuffer, 0, 4 );
+		}
 
         public static string ReadString(Stream stream)
         {
-            UnityEngine.Profiler.BeginSample( "ProtoParser.ReadString" );
+            Profiler.BeginSample( "ProtoParser.ReadString" );
 
             int length = (int)ReadUInt32(stream);
             if ( length <= 0 )
+            {
+                Profiler.EndSample();
                 return string.Empty;
+            }
 
             string str = string.Empty;
 
             if ( length >= staticBuffer.Length )
             {
-                UnityEngine.Profiler.BeginSample( "new Buffer" );
+                Profiler.BeginSample( "new Buffer" );
                 byte[] buffer = new byte[length];
-                UnityEngine.Profiler.EndSample();
+                Profiler.EndSample();
                 stream.Read( buffer, 0, length );
                 str = Encoding.UTF8.GetString( buffer, 0, length );
             }
@@ -57,7 +61,7 @@ namespace SilentOrbit.ProtocolBuffers
                 str = Encoding.UTF8.GetString( staticBuffer, 0, length );
             }
                 
-            UnityEngine.Profiler.EndSample();
+            Profiler.EndSample();
 
             return str;
         }
@@ -67,7 +71,7 @@ namespace SilentOrbit.ProtocolBuffers
         /// </summary>
         public static byte[] ReadBytes(Stream stream)
         {
-            UnityEngine.Profiler.BeginSample( "ProtoParser.ReadBytes" );
+            Profiler.BeginSample( "ProtoParser.ReadBytes" );
 
             //VarInt length
             int length = (int)ReadUInt32(stream);
@@ -83,7 +87,7 @@ namespace SilentOrbit.ProtocolBuffers
                 read += r;
             }
 
-            UnityEngine.Profiler.EndSample();
+            Profiler.EndSample();
 
             return buffer;
         }
@@ -103,12 +107,12 @@ namespace SilentOrbit.ProtocolBuffers
 
         public static void WriteString( Stream stream, string val )
         {
-            UnityEngine.Profiler.BeginSample( "ProtoParser.WriteString" );
+            Profiler.BeginSample( "ProtoParser.WriteString" );
             var len = Encoding.UTF8.GetBytes( val, 0, val.Length, staticBuffer, 0 );
 
             WriteUInt32( stream, (uint)len );
             stream.Write( staticBuffer, 0, len );
-            UnityEngine.Profiler.EndSample();
+            Profiler.EndSample();
         }
 
         /// <summary>
