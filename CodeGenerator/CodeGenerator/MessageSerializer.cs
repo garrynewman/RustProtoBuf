@@ -300,6 +300,7 @@ namespace SilentOrbit.ProtocolBuffers
                 case "uint32":
                 case "int32":
                 case "float":
+                case "double":
                 case "int64":
                 case "uint64":
                     {
@@ -559,6 +560,7 @@ namespace SilentOrbit.ProtocolBuffers
                     case "uint32":
                     case "int32":
                     case "float":
+                    case "double":
                     case "int64":
                     case "uint64":
                     case "string":

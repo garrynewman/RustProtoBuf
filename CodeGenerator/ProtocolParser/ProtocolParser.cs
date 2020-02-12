@@ -34,6 +34,18 @@ namespace SilentOrbit.ProtocolBuffers
 			stream.Write( staticBuffer, 0, 4 );
 		}
 
+        public static double ReadDouble( Stream stream )
+        {
+            stream.Read( staticBuffer, 0, 8 );
+            return staticBuffer.ReadUnsafe<double>();
+        }
+
+        public static void WriteDouble( Stream stream, double f )
+        {
+            staticBuffer.WriteUnsafe( f );
+            stream.Write( staticBuffer, 0, 8 );
+        }
+
         public static string ReadString(Stream stream)
         {
             Profiler.BeginSample( "ProtoParser.ReadString" );
