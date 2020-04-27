@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Facepunch.Extend;
@@ -90,6 +91,29 @@ namespace SilentOrbit.ProtocolBuffers
 
             //Bytes
             byte[] buffer = new byte[length];
+            ReadBytesInto(stream, buffer, length);
+            Profiler.EndSample();
+
+            return buffer;
+        }
+
+        public static ArraySegment<byte> ReadPooledBytes(Stream stream)
+        {
+            Profiler.BeginSample( "ProtoParser.ReadPooledBytes" );
+
+            //VarInt length
+            int length = (int)ReadUInt32(stream);
+
+            //Bytes
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(length);
+            ReadBytesInto(stream, buffer, length);
+            Profiler.EndSample();
+
+            return new ArraySegment<byte>(buffer, 0, length);
+        }
+
+        private static void ReadBytesInto(Stream stream, byte[] buffer, int length)
+        {
             int read = 0;
             while (read < length)
             {
@@ -98,10 +122,6 @@ namespace SilentOrbit.ProtocolBuffers
                     throw new ProtocolBufferException("Expected " + (length - read) + " got " + read);
                 read += r;
             }
-
-            Profiler.EndSample();
-
-            return buffer;
         }
 
         /// <summary>
@@ -135,7 +155,17 @@ namespace SilentOrbit.ProtocolBuffers
             WriteUInt32(stream, (uint)val.Length);
             stream.Write(val, 0, val.Length);
         }
+		
+        public static void WritePooledBytes(Stream stream, ArraySegment<byte> segment)
+        {
+            if (segment.Array == null)
+            {
+                WriteUInt32(stream, 0);
+                return;
+            }
 
+            WriteUInt32(stream, (uint)segment.Count);
+            stream.Write(segment.Array, segment.Offset, segment.Count);
+        }
     }
 }
-

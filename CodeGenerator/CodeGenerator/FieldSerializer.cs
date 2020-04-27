@@ -180,7 +180,9 @@ namespace SilentOrbit.ProtocolBuffers
                     case ProtoBuiltin.String:
                         return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadString(" + stream + ")";
                     case ProtoBuiltin.Bytes:
-                        return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadBytes(" + stream + ")";
+                        return f.OptionPooled
+                            ? "global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadPooledBytes(" + stream + ")"
+                            : "global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadBytes(" + stream + ")";
                     default:
                         throw new ProtoFormatException("unknown build in: " + f.ProtoType.ProtoName, f.Source);
                 }
@@ -444,7 +446,9 @@ namespace SilentOrbit.ProtocolBuffers
                 case ProtoBuiltin.String:
                     return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteString(" + stream + ", " + instance + " );";
                 case ProtoBuiltin.Bytes:
-                    return "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteBytes(" + stream + ", " + instance + ");";
+                    return f.OptionPooled
+                        ? "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WritePooledBytes(" + stream + ", " + instance + ");"
+                        : "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteBytes(" + stream + ", " + instance + ");";
             }
 
             throw new NotImplementedException();

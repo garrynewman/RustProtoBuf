@@ -122,7 +122,7 @@ namespace SilentOrbit.ProtocolBuffers
             //Change property name to C# style, CamelCase.
             f.CsName = GetCSPropertyName(m, f.ProtoName);
 
-            f.ProtoType = GetBuiltinProtoType(f.ProtoTypeName);
+            f.ProtoType = GetBuiltinProtoType(f);
             if (f.ProtoType == null)
                 f.ProtoType = Search.GetProtoType(m, f.ProtoTypeName);
             if (f.ProtoType == null)
@@ -145,8 +145,9 @@ namespace SilentOrbit.ProtocolBuffers
         /// Return the type given the name from a .proto file.
         /// Return Unknonw if it is a message or an enum.
         /// </summary>
-        static ProtoBuiltin GetBuiltinProtoType(string type)
+        static ProtoBuiltin GetBuiltinProtoType(Field field)
         {
+            var type = field.ProtoTypeName;
             switch (type)
             {
                 case "double":
@@ -178,7 +179,9 @@ namespace SilentOrbit.ProtocolBuffers
                 case "string":
                     return new ProtoBuiltin(type, Wire.LengthDelimited, "string");
                 case "bytes":
-                    return new ProtoBuiltin(type, Wire.LengthDelimited, "byte[]");
+                    return field.OptionPooled
+                        ? new ProtoBuiltin(type, Wire.LengthDelimited, "ArraySegment<byte>")
+                        : new ProtoBuiltin(type, Wire.LengthDelimited, "byte[]");
                 default:
                     return null;
             }

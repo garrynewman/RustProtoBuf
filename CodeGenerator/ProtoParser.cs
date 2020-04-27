@@ -272,6 +272,9 @@ namespace SilentOrbit.ProtocolBuffers
                 case "deprecated":
                     f.OptionDeprecated = Boolean.Parse(val);
                     break;
+                case "pooled":
+                    f.OptionPooled = Boolean.Parse(val);
+                    break;
                 default:
                     Console.WriteLine("Warning: Unknown field option: " + key);
                     break;

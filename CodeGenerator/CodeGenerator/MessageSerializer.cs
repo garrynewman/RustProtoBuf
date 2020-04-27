@@ -287,7 +287,17 @@ namespace SilentOrbit.ProtocolBuffers
 
                 case "bytes":
                     {
-                        cw.WriteLine( name + " = null;" );
+                        if ( f.OptionPooled )
+                        {
+                            cw.IfBracket( name + ".Array != null" );
+                            cw.WriteLine( "ArrayPool<byte>.Shared.Return(" + name + ".Array);" );
+                            cw.EndBracket();
+                            cw.WriteLine( name + " = default(ArraySegment<byte>);");
+                        }
+                        else
+                        {
+                            cw.WriteLine( name + " = null;" );
+                        }
                         break;
                     }
 
@@ -570,15 +580,30 @@ namespace SilentOrbit.ProtocolBuffers
                         }
                     case "bytes":
                         {
-                            cw.WriteLine( "if ( this." + f.CsName + " == null )" );
-                            cw.Bracket();
-                            cw.WriteLine( "instance." + f.CsName + " = null;" );
-                            cw.EndBracket();
-                            cw.WriteLine( "else" );
-                            cw.Bracket();
-                            cw.WriteLine( "instance." + f.CsName + " = new byte[this." + f.CsName + ".Length];" );
-                            cw.WriteLine( "Array.Copy( this." + f.CsName + ", instance." + f.CsName + ", instance." + f.CsName + ".Length );" );
-                            cw.EndBracket();
+                            if ( f.OptionPooled )
+                            {
+                                cw.IfBracket( $"this.{f.CsName}.Array == null" );
+                                cw.WriteLine( $"instance.{f.CsName} = default(ArraySegment<byte>);" );
+                                cw.EndBracket();
+                                cw.WriteLine( "else" );
+                                cw.Bracket();
+                                cw.WriteLine( $"var buffer{f.ID} = ArrayPool<byte>.Shared.Rent( this.{f.CsName}.Count );" );
+                                cw.WriteLine( $"Array.Copy( this.{f.CsName}.Array, 0, buffer{f.ID}, 0, this.{f.CsName}.Count );" );
+                                cw.WriteLine( $"instance.{f.CsName} = new ArraySegment<byte>( buffer{f.ID}, 0, this.{f.CsName}.Count );" );
+                                cw.EndBracket();
+                            }
+                            else
+                            {
+                                cw.WriteLine( "if ( this." + f.CsName + " == null )" );
+                                cw.Bracket();
+                                cw.WriteLine( "instance." + f.CsName + " = null;" );
+                                cw.EndBracket();
+                                cw.WriteLine( "else" );
+                                cw.Bracket();
+                                cw.WriteLine( "instance." + f.CsName + " = new byte[this." + f.CsName + ".Length];" );
+                                cw.WriteLine( "Array.Copy( this." + f.CsName + ", instance." + f.CsName + ", instance." + f.CsName + ".Length );" );
+                                cw.EndBracket();
+                            }
                             break;
                         }
 
