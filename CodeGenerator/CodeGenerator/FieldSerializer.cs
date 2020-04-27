@@ -323,7 +323,12 @@ namespace SilentOrbit.ProtocolBuffers
                     f.ProtoType.ProtoName == ProtoBuiltin.Bytes)
                 {
                     if (f.ProtoType.Nullable) //Struct always exist, not optional
-                        cw.IfBracket("instance." + f.CsName + " != null");
+                    {
+                        if (f.ProtoType.ProtoName == ProtoBuiltin.Bytes && f.OptionPooled)
+                            cw.IfBracket("instance." + f.CsName + ".Array != null");
+                        else
+                            cw.IfBracket("instance." + f.CsName + " != null");
+                    }
 
                     if ( hasPrevious && canDelta )
                         cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
@@ -367,7 +372,11 @@ namespace SilentOrbit.ProtocolBuffers
                     f.ProtoType.ProtoName == ProtoBuiltin.String ||
                     f.ProtoType.ProtoName == ProtoBuiltin.Bytes)
                 {
-                    cw.WriteLine("if (instance." + f.CsName + " == null)");
+                    if (f.ProtoType.ProtoName == ProtoBuiltin.Bytes && f.OptionPooled)
+                        cw.WriteLine("if (instance." + f.CsName + ".Array == null)");
+                    else
+                        cw.WriteLine("if (instance." + f.CsName + " == null)");
+
                     cw.WriteIndent("throw new ArgumentNullException(\"" + f.CsName + "\", \"Required by proto specification.\");");
                 }
                 KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
