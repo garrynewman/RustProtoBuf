@@ -417,6 +417,7 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.WriteLine();
 
                 cw.Bracket( "public virtual void Dispose()" );
+                cw.WriteLine( "if ( !ShouldPool ) throw new Exception( \"Trying to dispose a class that shouldn't be pooled!\" );" );
                 cw.WriteLine( "if ( _disposed ) return;" );
                 cw.WriteLine( "ResetToPool();" );
                 cw.WriteLine( "_disposed = true;" );
