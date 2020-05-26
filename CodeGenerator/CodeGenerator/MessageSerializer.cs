@@ -20,6 +20,11 @@ namespace SilentOrbit.ProtocolBuffers
                 //Make separate static class for them
                 cw.Bracket( m.OptionAccess + " partial class " + m.SerializerType + baseclass );
             }
+            else if (m.OptionType == "struct")
+            {
+                //cw.Attribute("System.Serializable()");
+                cw.Bracket(m.OptionAccess + " partial struct " + m.SerializerType + " : SilentOrbit.ProtocolBuffers.IProto" );
+            }
             else
             {
                 //cw.Attribute("System.Serializable()");
@@ -44,14 +49,21 @@ namespace SilentOrbit.ProtocolBuffers
 
         static void GenerateCreateNew( CodeWriter cw, string name, ProtoMessage m )
         {
-            cw.WriteLine( m.CsType + " " + name + " = Facepunch.Pool.Get<"+ m.CsType + ">();" );
-            //cw.WriteLine( m.CsType + " "+ name +" = new " + m.CsType + "();" );
+            if (m.OptionType != "struct")
+            {
+                cw.WriteLine(m.CsType + " " + name + " = Facepunch.Pool.Get<" + m.CsType + ">();");
+            }
+            else
+            {
+                cw.WriteLine(m.CsType + " " + name + " = default(" + m.CsType + ");");
+            }
         }
 
         static void GenerateReader(ProtoMessage m, CodeWriter cw)
         {
             #region Helper Deserialize Methods
             string refstr = (m.OptionType == "struct") ? "ref " : "";
+            string virtualstr = (m.OptionType == "struct") ? "" : "virtual ";
 			if ( m.OptionType != "interface" && !m.OptionNoPartials )
             {
 				if ( !m.OptionNoInstancing )
@@ -61,7 +73,7 @@ namespace SilentOrbit.ProtocolBuffers
                     GenerateCreateNew( cw, "instance", m );
                     cw.WriteLine( "Deserialize(stream, " + refstr + "instance, false );" );
 					cw.WriteLine( "return instance;" );
-                cw.EndBracketSpace();
+                    cw.EndBracketSpace();
 
 					cw.Summary( "Helper: create a new instance to deserializing into" );
 					cw.Bracket( m.OptionAccess + " static " + m.CsType + " DeserializeLengthDelimited(Stream stream )" );
@@ -75,7 +87,7 @@ namespace SilentOrbit.ProtocolBuffers
                     GenerateCreateNew( cw, "instance", m );
                     cw.WriteLine( "DeserializeLength(stream, length, " + refstr + "instance, false );" );
 					cw.WriteLine( "return instance;" );
-                cw.EndBracketSpace();
+                    cw.EndBracketSpace();
 
                     cw.Summary( "Helper: put the buffer into a MemoryStream and create a new instance to deserializing into" );
                     cw.Bracket( m.OptionAccess + " static " + m.CsType + " Deserialize(byte[] buffer )" );
@@ -88,7 +100,28 @@ namespace SilentOrbit.ProtocolBuffers
 
 				cw.Summary( "Load this value from a proto buffer" );
 				cw.Bracket( m.OptionAccess + " void FromProto(Stream stream, bool isDelta = false)" );
-				cw.WriteLine( "Deserialize(stream, this, isDelta );" );
+				cw.WriteLine( $"Deserialize(stream, {refstr}this, isDelta );" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( $"public {virtualstr}void WriteToStream( Stream stream )" );
+                cw.WriteLine( $"Serialize( stream, this );" );
+                cw.EndBracketSpace();
+
+                cw.Bracket( $"public {virtualstr}void WriteToStreamDelta( Stream stream, " + m.CsType + " previous )" );
+                if (m.OptionType == "struct")
+                {
+                    cw.WriteLine( "SerializeDelta( stream, this, previous );");
+                }
+                else
+                {
+                    cw.WriteLine( "if ( previous == null ) Serialize( stream, this );");
+                    cw.WriteLine( "else SerializeDelta( stream, this, previous );");
+                }
+
+                cw.EndBracketSpace();
+
+                cw.Bracket( $"public {virtualstr}void ReadFromStream( Stream stream, int size, bool isDelta = false )" );
+                cw.WriteLine( $"DeserializeLength( stream, size, {refstr}this, isDelta );" );
                 cw.EndBracketSpace();
 
             }
@@ -430,19 +463,6 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.Bracket( "public virtual void LeavePool()" );
                 cw.WriteLine( "_disposed = false;" );
                 cw.EndBracketSpace();
-
-                cw.Bracket( "public virtual void WriteToStream( Stream stream )" );
-                cw.WriteLine( "Serialize( stream, this );" );
-                cw.EndBracketSpace();
-
-                cw.Bracket( "public virtual void WriteToStreamDelta( Stream stream, " + m.CsType + " previous )" );
-                cw.WriteLine( "if ( previous == null ) Serialize( stream, this );" );
-                cw.WriteLine( "else SerializeDelta( stream, this, previous );" );
-                cw.EndBracketSpace();
-
-                cw.Bracket( "public virtual void ReadFromStream( Stream stream, int size, bool isDelta = false )" );
-                cw.WriteLine( "DeserializeLength( stream, size, this, isDelta );" );
-                cw.EndBracketSpace();
             }
         }
 
@@ -638,7 +658,7 @@ namespace SilentOrbit.ProtocolBuffers
 
             cw.Summary( "Reset the class to its default state - " + m.OptionType );
             cw.Bracket( m.OptionAccess + " " + m.CsType + " Copy()" );
-            cw.WriteLine( "var newInstance = Facepunch.Pool.Get<" + m.CsType + ">();" );
+            GenerateCreateNew( cw, "newInstance", m );
             cw.WriteLine( "this.CopyTo( newInstance );" );
             cw.WriteLine( "return newInstance;" );
             cw.EndBracketSpace();
