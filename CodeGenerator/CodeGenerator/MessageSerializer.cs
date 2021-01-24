@@ -581,7 +581,31 @@ namespace SilentOrbit.ProtocolBuffers
             {
                 if ( f.Rule == FieldRule.Repeated )
                 {
-                    cw.WriteLine( "throw new NotImplementedException();" );
+                    cw.IfBracket( $"this.{f.CsName} != null" );
+                    cw.WriteLine( $"instance.{f.CsName} = Facepunch.Pool.GetList<{f.ProtoType.CsType}>();" );
+
+                    cw.ForeachBracket( "item", $"this.{f.CsName}" );
+                    if ( f.ProtoType is ProtoMessage )
+                    {
+                        cw.WriteLine( $"var copy = item.Copy();" );
+                        cw.WriteLine( $"instance.{f.CsName}.Add( copy );" );
+                    }
+                    else if ( f.ProtoType.ProtoName == "bytes" )
+                    {
+                        cw.WriteLine( "throw new NotImplementedException( \"TODO: Copy bytes\" );" );
+                    }
+                    else
+                    {
+                        // primitive - no copy needed
+                        cw.WriteLine( $"instance.{f.CsName}.Add( item );" );
+                    }
+                    cw.EndBracket();
+
+                    cw.EndBracket();
+                    cw.Bracket( "else" );
+                    cw.WriteLine( $"instance.{f.CsName} = null;" );
+                    cw.EndBracket();
+
                     continue;
                 }
 
