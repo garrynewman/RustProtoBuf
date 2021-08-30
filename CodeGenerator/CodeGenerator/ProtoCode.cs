@@ -42,6 +42,8 @@ then write the code and the changes in a separate file.");
                 cw.WriteLine("using System.Collections.Generic;");
                 cw.WriteLine();
 
+                InspectionCode.GenerateShared(cw, options);
+
                 string ns = null; //avoid writing namespace between classes if they belong to the same
                 foreach (ProtoMessage m in file.Messages.Values)
                 {
@@ -57,8 +59,8 @@ then write the code and the changes in a separate file.");
 						else
 						{
 							cw.Bracket( "namespace " + m.CsNamespace );
-                        ns = m.CsNamespace;
-                    }
+                            ns = m.CsNamespace;
+                        }
                     }
                     MessageCode.GenerateClass(m, cw, options);
                     cw.WriteLine();
@@ -77,8 +79,10 @@ then write the code and the changes in a separate file.");
                     cw.WriteLine();
                 }
 
-				if ( ns != null )
-                cw.EndBracket();
+                if (ns != null)
+                {
+                    cw.EndBracket();
+                }
             }
 
             //.Serializer.cs
@@ -119,14 +123,16 @@ This file will be overwritten when CodeGenerator is run.");
 						else
 						{
 							cw.Bracket( "namespace " + m.CsNamespace );
-                        ns = m.CsNamespace;
-                    }
+                            ns = m.CsNamespace;
+                        }
                     }
                     MessageSerializer.GenerateClassSerializer(m, cw, options);
                 }
 
-				if ( ns != null )
-                cw.EndBracket();
+                if (ns != null)
+                {
+                    cw.EndBracket();
+                }
             }
 
             string libPath = Path.Combine(Path.GetDirectoryName(csPath), "ProtocolParser.cs");

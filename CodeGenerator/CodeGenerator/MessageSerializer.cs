@@ -42,6 +42,9 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.WriteLine();
                 GenerateClassSerializer(sub, cw, options);
             }
+
+            InspectionCode.GenerateUidInspector(m, cw, options);
+
             cw.EndBracket();
             cw.WriteLine();
             return;

@@ -47,6 +47,7 @@ namespace SilentOrbit.ProtocolBuffers
 		public bool OptionUseReferences = true;
         public string OptionDefault = null;
         public bool OptionPooled = false;
+        public string OptionUid = null;
 
         public bool IsUsingBinaryWriter
         {

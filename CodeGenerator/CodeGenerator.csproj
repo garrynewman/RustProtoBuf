@@ -58,6 +58,7 @@
     <Compile Include="Proto\IComment.cs" />
     <Compile Include="Proto\Search.cs" />
     <Compile Include="Options.cs" />
+    <Compile Include="CodeGenerator\UidInspectionCode.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
