@@ -181,7 +181,7 @@ namespace SilentOrbit.ProtocolBuffers
                             csType = f.OptionCodeType;
 
                         cw.WriteLine("if (instance." + f.CsName + " == null)");
-                        cw.WriteIndent("instance." + f.CsName + " = Facepunch.Pool.Get<List<" + csType + ">>();");
+                        cw.WriteIndent("instance." + f.CsName + " = Facepunch.Pool.GetList<" + csType + ">();");
                     }
                     else if (f.OptionDefault != null)
                     {
@@ -585,7 +585,7 @@ namespace SilentOrbit.ProtocolBuffers
                 if ( f.Rule == FieldRule.Repeated )
                 {
                     cw.IfBracket( $"this.{f.CsName} != null" );
-                    cw.WriteLine( $"instance.{f.CsName} = Facepunch.Pool.GetList<{f.ProtoType.CsType}>();" );
+                    cw.WriteLine( $"instance.{f.CsName} = Facepunch.Pool.GetList<{f.ProtoType.FullCsType}>();" );
 
                     cw.ForeachBracket( "item", $"this.{f.CsName}" );
                     if ( f.ProtoType is ProtoMessage )
