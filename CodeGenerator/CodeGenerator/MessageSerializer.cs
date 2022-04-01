@@ -341,11 +341,17 @@ namespace SilentOrbit.ProtocolBuffers
                     }
 
                 case "uint32":
+                case "sint32":
                 case "int32":
+                case "fixed32":
+                case "sfixed32":
                 case "float":
                 case "double":
                 case "int64":
                 case "uint64":
+                case "sint64":
+                case "fixed64":
+                case "sfixed64":
                     {
                         cw.WriteLine( name + " = 0;" );
                         break;
