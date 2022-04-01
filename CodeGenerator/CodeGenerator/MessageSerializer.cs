@@ -620,10 +620,16 @@ namespace SilentOrbit.ProtocolBuffers
                     case "bool":
                     case "uint32":
                     case "int32":
+                    case "sint32":
+                    case "fixed32":
+                    case "sfixed32":
                     case "float":
                     case "double":
                     case "int64":
                     case "uint64":
+                    case "sint64":
+                    case "fixed64":
+                    case "sfixed64":
                     case "string":
                         {
                             cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ";" );
