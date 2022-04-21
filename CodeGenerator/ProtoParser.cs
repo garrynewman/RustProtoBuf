@@ -245,15 +245,34 @@ namespace SilentOrbit.ProtocolBuffers
             while (true)
             {
                 string key = tr.ReadNext();
-                tr.ReadNextOrThrow("=");
-                string val = tr.ReadNext();
+                string equalOrEnd = tr.ReadNext();
+                string optionSep = null;
 
-                ParseFieldOption(key, val, f);
-                string optionSep = tr.ReadNext();
+                if (equalOrEnd == "]" || equalOrEnd == ",")
+                {
+                    ParseFieldOption(key, null, f);
+                    optionSep = equalOrEnd;
+                }
+                else if (equalOrEnd == "=")
+                {
+                    string val = tr.ReadNext();
+                    ParseFieldOption(key, val, f);
+                }
+                else
+                {
+                    throw new ProtoFormatException($@"Expected ""="" or ""]"", got {equalOrEnd}", tr);
+                }
+
+                if (optionSep == null)
+                {
+                    optionSep = tr.ReadNext();
+                }
+
                 if (optionSep == "]")
                     break;
                 if (optionSep == ",")
                     continue;
+
                 throw new ProtoFormatException(@"Expected "","" or ""]"" got " + tr.NextCharacter, tr);
             }
             tr.ReadNextOrThrow(";");
@@ -267,13 +286,16 @@ namespace SilentOrbit.ProtocolBuffers
                     f.OptionDefault = val;
                     break;
                 case "packed":
-                    f.OptionPacked = Boolean.Parse(val);
+                    f.OptionPacked = Boolean.Parse(val ?? "true");
                     break;
                 case "deprecated":
-                    f.OptionDeprecated = Boolean.Parse(val);
+                    f.OptionDeprecated = Boolean.Parse(val ?? "true");
                     break;
                 case "pooled":
-                    f.OptionPooled = Boolean.Parse(val);
+                    f.OptionPooled = Boolean.Parse(val ?? "true");
+                    break;
+                case "uid":
+                    f.OptionUid = val ?? "Entity";
                     break;
                 default:
                     Console.WriteLine("Warning: Unknown field option: " + key);
