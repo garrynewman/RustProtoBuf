@@ -367,7 +367,7 @@ namespace SilentOrbit.ProtocolBuffers
                         {
                             //cw.WriteLine( "// Don't bother resetting structs? " );
                             //cw.WriteLine( "// " + f.ProtoType.OptionNamespace + "." + f.ProtoTypeName + "Serialized.ResetToPool( " + name + ");" );
-                            cw.WriteLine( name + " = default( " + f.ProtoType.OptionNamespace + "." + f.ProtoType.ProtoName + " );" );
+                            cw.WriteLine( name + " = default( " + f.ProtoType.FullCsType + " );" );
                         }
                         else if ( f.ProtoType is ProtoEnum )
                         {
