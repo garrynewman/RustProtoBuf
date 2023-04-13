@@ -594,14 +594,19 @@ namespace SilentOrbit.ProtocolBuffers
                     cw.WriteLine( $"instance.{f.CsName} = Facepunch.Pool.GetList<{f.ProtoType.FullCsType}>();" );
 
                     cw.ForeachBracket( "item", $"this.{f.CsName}" );
-                    if ( f.ProtoType is ProtoMessage )
+                    if ( f.ProtoType.ProtoName == "bytes" )
+                    {
+                        cw.WriteLine( "throw new NotImplementedException( \"TODO: Copy bytes\" );" );
+                    }
+                    else if ( f.ProtoType.OptionType == "struct" || f.ProtoType is ProtoEnum )
+                    {
+                        // value type - no copy needed
+                        cw.WriteLine( $"instance.{f.CsName}.Add( item );" );
+                    }
+                    else if ( f.ProtoType is ProtoMessage )
                     {
                         cw.WriteLine( $"var copy = item.Copy();" );
                         cw.WriteLine( $"instance.{f.CsName}.Add( copy );" );
-                    }
-                    else if ( f.ProtoType.ProtoName == "bytes" )
-                    {
-                        cw.WriteLine( "throw new NotImplementedException( \"TODO: Copy bytes\" );" );
                     }
                     else
                     {

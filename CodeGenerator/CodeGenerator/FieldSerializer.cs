@@ -38,7 +38,20 @@ namespace SilentOrbit.ProtocolBuffers
                 else
                 {
                     cw.Comment("repeated");
-                    cw.WriteLine("instance." + f.CsName + ".Add(" + FieldReaderType(f, "stream", "br", null) + ");");
+
+                    // note: can only use 'repeated packed' for primitives so this code path doesn't need to be duplicated above
+                    if (f.ProtoType is ProtoMessage && f.ProtoType.OptionType == "struct")
+                    {
+                        cw.WriteLine( "{" );
+                        cw.WriteIndent( $"var a = default( {f.ProtoType.FullCsType} );" );
+                        cw.WriteIndent( $"{FieldReaderType(f, "stream", "br", "ref a")};" );
+                        cw.WriteIndent( $"instance.{f.CsName}.Add( a );" );
+                        cw.WriteLine( "}" );
+                    }
+                    else
+                    {
+                        cw.WriteLine("instance." + f.CsName + ".Add(" + FieldReaderType(f, "stream", "br", null) + ");");
+                    }
                 }
             }
             else
@@ -135,7 +148,7 @@ namespace SilentOrbit.ProtocolBuffers
             if (f.ProtoType is ProtoMessage)
             {
                 var m = f.ProtoType as ProtoMessage;
-                if (f.Rule == FieldRule.Repeated || instance == null)
+                if ((f.Rule == FieldRule.Repeated && f.ProtoType.OptionType != "struct") || instance == null)
                     return m.FullSerializerType + ".DeserializeLengthDelimited(" + stream + ")";
                 else
                     return m.FullSerializerType + ".DeserializeLengthDelimited(" + stream + ", " + instance + ", isDelta )";
