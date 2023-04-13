@@ -182,6 +182,12 @@ namespace SilentOrbit.ProtocolBuffers
                     return field.OptionPooled
                         ? new ProtoBuiltin(type, Wire.LengthDelimited, "ArraySegment<byte>")
                         : new ProtoBuiltin(type, Wire.LengthDelimited, "byte[]");
+                case ProtoBuiltin.NetworkableId:
+                    return new ProtoBuiltin(type, Wire.Varint, "global::NetworkableId");
+                case ProtoBuiltin.ItemContainerId:
+                    return new ProtoBuiltin(type, Wire.Varint, "global::ItemContainerId");
+                case ProtoBuiltin.ItemId:
+                    return new ProtoBuiltin(type, Wire.Varint, "global::ItemId");
                 default:
                     return null;
             }

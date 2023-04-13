@@ -360,6 +360,14 @@ namespace SilentOrbit.ProtocolBuffers
                         break;
                     }
 
+                case ProtoBuiltin.NetworkableId:
+                case ProtoBuiltin.ItemContainerId:
+                case ProtoBuiltin.ItemId:
+                    {
+                        cw.WriteLine( $"{name} = default( {f.ProtoType.FullCsType} );" );
+                        break;
+                    }
+
                 default:
                     {
 
@@ -639,6 +647,9 @@ namespace SilentOrbit.ProtocolBuffers
                     case "fixed64":
                     case "sfixed64":
                     case "string":
+                    case ProtoBuiltin.NetworkableId:
+                    case ProtoBuiltin.ItemContainerId:
+                    case ProtoBuiltin.ItemId:
                         {
                             cw.WriteLine( "instance." + f.CsName + " = " + "this." + f.CsName + ";" );
                             break;

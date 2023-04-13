@@ -196,6 +196,10 @@ namespace SilentOrbit.ProtocolBuffers
                         return f.OptionPooled
                             ? "global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadPooledBytes(" + stream + ")"
                             : "global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadBytes(" + stream + ")";
+                    case ProtoBuiltin.NetworkableId:
+                    case ProtoBuiltin.ItemContainerId:
+                    case ProtoBuiltin.ItemId:
+                        return $"new {f.ProtoType.FullCsType}(global::SilentOrbit.ProtocolBuffers.ProtocolParser.ReadUInt64({stream}))";
                     default:
                         throw new ProtoFormatException("unknown build in: " + f.ProtoType.ProtoName, f.Source);
                 }
@@ -236,7 +240,7 @@ namespace SilentOrbit.ProtocolBuffers
                 b |= 0x80;
                 cw.WriteLine(stream + ".WriteByte(" + b + ");");
             }
-            }
+        }
 
         /// <summary>
         /// Generates inline writer of a length delimited byte array
@@ -471,6 +475,10 @@ namespace SilentOrbit.ProtocolBuffers
                     return f.OptionPooled
                         ? "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WritePooledBytes(" + stream + ", " + instance + ");"
                         : "global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteBytes(" + stream + ", " + instance + ");";
+                case ProtoBuiltin.NetworkableId:
+                case ProtoBuiltin.ItemContainerId:
+                case ProtoBuiltin.ItemId:
+                    return $"global::SilentOrbit.ProtocolBuffers.ProtocolParser.WriteUInt64({stream}, {instance}.Value);";
             }
 
             throw new NotImplementedException();

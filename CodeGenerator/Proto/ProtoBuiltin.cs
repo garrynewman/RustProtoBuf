@@ -23,6 +23,9 @@ namespace SilentOrbit.ProtocolBuffers
         public const string Bool = "bool";
         public const string String = "string";
         public const string Bytes = "bytes";
+        public const string NetworkableId = "NetworkableId";
+        public const string ItemContainerId = "ItemContainerId";
+        public const string ItemId = "ItemId";
         #endregion
 
         public ProtoBuiltin(string name, Wire wire, string csType)
