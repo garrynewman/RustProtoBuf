@@ -8,18 +8,22 @@ namespace SilentOrbit.ProtocolBuffers
         public static void GenerateShared(CodeWriter cw, Options options)
         {
             cw.Bracket("public enum UidType");
-            cw.WriteLine("/// <summary>");
-            cw.WriteLine("/// This UID refers to an entity");
+            cw.WriteLine($"/// <summary>");
+            cw.WriteLine($"/// This UID refers to an entity");
             cw.WriteLine("/// </summary>");
-            cw.WriteLine("Entity,");
-            cw.WriteLine("/// <summary>");
-            cw.WriteLine("/// This UID refers to an item");
-            cw.WriteLine("/// </summary>");
-            cw.WriteLine("Item,");
-            cw.WriteLine("/// <summary>");
-            cw.WriteLine("/// This UID is not important and needs to be cleared to zero");
-            cw.WriteLine("/// </summary>");
-            cw.WriteLine("Clear,");
+            cw.WriteLine($"{ProtoBuiltin.NetworkableId},");
+            cw.WriteLine($"/// <summary>");
+            cw.WriteLine($"/// This UID refers to an item container");
+            cw.WriteLine($"/// </summary>");
+            cw.WriteLine($"{ProtoBuiltin.ItemContainerId},");
+            cw.WriteLine($"/// <summary>");
+            cw.WriteLine($"/// This UID refers to an item");
+            cw.WriteLine($"/// </summary>");
+            cw.WriteLine($"{ProtoBuiltin.ItemId},");
+            cw.WriteLine($"/// <summary>");
+            cw.WriteLine($"/// This UID is not important and needs to be cleared to zero");
+            cw.WriteLine($"/// </summary>");
+            cw.WriteLine($"Clear,");
             cw.EndBracket();
             cw.WriteLine();
             cw.WriteLine("public delegate void UidInspector<T>(UidType type, ref T value);");
@@ -28,27 +32,23 @@ namespace SilentOrbit.ProtocolBuffers
 
         public static void GenerateUidInspector(ProtoMessage m, CodeWriter cw, Options options)
         {
-            cw.Bracket("public void InspectUids(UidInspector<uint> action)");
+            cw.Bracket("public void InspectUids(UidInspector<ulong> action)");
 
             foreach (var f in m.Fields.Values)
             {
-                if (!string.IsNullOrWhiteSpace(f.OptionUid))
+                if (f.ProtoType.ProtoName == ProtoBuiltin.NetworkableId || f.ProtoType.ProtoName == ProtoBuiltin.ItemContainerId || f.ProtoType.ProtoName == ProtoBuiltin.ItemId)
                 {
-                    if (f.ProtoType.ProtoName != ProtoBuiltin.UInt32)
-                    {
-                        throw new Exception($"{m.FullCsType}::{f.CsName} is tagged as a uid but is not a uint32");
-                    }
-                    
+                    var type = f.OptionUidClear ? "Clear" : f.ProtoType.ProtoName;
                     if (f.Rule == FieldRule.Repeated)
                     {
                         cw.ForeachBracket("uid", f.CsName);
-                        cw.WriteLine($"action(UidType.{f.OptionUid}, ref uid);");
+                        cw.WriteLine($"action(UidType.{type}, ref uid.Value);");
                         cw.WriteLine($"{f.CsName}[i] = uid;"); // Write changes back, note: ForeachBracket doesn't actually use a foreach
                         cw.EndBracket();
                     }
                     else
                     {
-                        cw.WriteLine($"action(UidType.{f.OptionUid}, ref {f.CsName});");
+                        cw.WriteLine($"action(UidType.{type}, ref {f.CsName}.Value);");
                     }
                 }
                 else if (f.ProtoType is ProtoMessage message && !message.OptionExternal)

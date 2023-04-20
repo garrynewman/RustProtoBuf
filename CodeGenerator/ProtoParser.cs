@@ -294,8 +294,8 @@ namespace SilentOrbit.ProtocolBuffers
                 case "pooled":
                     f.OptionPooled = Boolean.Parse(val ?? "true");
                     break;
-                case "uid":
-                    f.OptionUid = val ?? "Entity";
+                case "uid_clear":
+                    f.OptionUidClear = Boolean.Parse(val ?? "true");
                     break;
                 default:
                     Console.WriteLine("Warning: Unknown field option: " + key);
