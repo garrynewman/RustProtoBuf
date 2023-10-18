@@ -42,6 +42,68 @@ namespace SilentOrbit.ProtocolBuffers
             return ret;
         }
 
+        /// <summary>
+        /// Unsigned VarInt format
+        /// Do not use to read int32, use ReadUint64 for that.
+        /// </summary>
+        public static uint ReadUInt32( byte[] array, int pos, out int length )
+        {
+            int b;
+            uint val = 0;
+            length = 0;
+
+            for (int n = 0; n < 5; n++)
+            {
+                length++;
+
+                if (pos >= array.Length)
+                {
+                    break;
+                }
+                b = array[ pos++ ];
+                if (b < 0)
+                    throw new IOException( "Stream ended too early" );
+
+                //Check that it fits in 32 bits
+                if ((n == 4) && (b & 0xF0) != 0)
+                    throw new ProtocolBufferException( "Got larger VarInt than 32bit unsigned" );
+                //End of check
+
+                if ((b & 0x80) == 0)
+                    return val | (uint)b << (7 * n);
+
+                val |= (uint)(b & 0x7F) << (7 * n);
+            }
+
+            throw new ProtocolBufferException( "Got larger VarInt than 32bit unsigned" );
+        }
+
+        /// <summary>
+        /// Unsigned VarInt format
+        /// </summary>
+        public static int WriteUInt32( uint val, byte[] array, int pos )
+        {
+            int length = 0;
+            byte b;
+            while (pos < array.Length)
+            {
+                length++;
+                b = (byte)(val & 0x7F);
+                val = val >> 7;
+                if (val == 0)
+                {
+                    array[ pos++ ] = b;
+                    break;
+                }
+                else
+                {
+                    b |= 0x80;
+                    array[ pos++ ] = b;
+                }
+            }
+            return length;
+        }
+
         #region VarInt: int32, uint32, sint32
 
         [Obsolete("Use (int)ReadUInt64(stream); //yes 64")]
