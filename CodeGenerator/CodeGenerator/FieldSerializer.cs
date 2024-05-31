@@ -285,6 +285,10 @@ namespace SilentOrbit.ProtocolBuffers
             if ( f.ProtoType.ProtoName == ProtoBuiltin.UInt64 ) canDelta = true;
             if ( f.ProtoType.ProtoName == ProtoBuiltin.Double ) canDelta = true;
 
+            // Don't serialize fields if they are their default value
+            // Should be safe to use on every single type, as long as it doesn't apply during delta comparison
+            bool canOptional = f.OptionDefault == null && !hasPrevious;
+
             if (f.Rule == FieldRule.Repeated)
             {
                 if (f.OptionPacked == true)
@@ -335,13 +339,8 @@ namespace SilentOrbit.ProtocolBuffers
             }
             else if (f.Rule == FieldRule.Optional)
             {
-                // Don't serialize fields if they are their default value
-                // Should be safe to use on every single type, as long as it doesn't apply during delta comparison
-                bool skippedDefaultValue = false;
-                bool canOptional = f.OptionDefault == null;
-                if (canOptional && !hasPrevious)
+                if (canOptional)
                 {
-                    skippedDefaultValue = true;
                     cw.IfBracket( "instance." + f.CsName + " != default" );
                 }
 
@@ -368,7 +367,7 @@ namespace SilentOrbit.ProtocolBuffers
                     if ( hasPrevious && canDelta ) 
                         cw.EndBracket();
 
-                    if (skippedDefaultValue)
+                    if (canOptional)
                         cw.EndBracket();
                     return;
                 }
@@ -380,7 +379,7 @@ namespace SilentOrbit.ProtocolBuffers
                     cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
                     if (f.OptionDefault != null)
                         cw.EndBracket();
-                    if (skippedDefaultValue)
+                    if (canOptional)
                         cw.EndBracket();
                     return;
                 }
@@ -393,12 +392,17 @@ namespace SilentOrbit.ProtocolBuffers
 
                 if ( hasPrevious && canDelta ) 
                     cw.EndBracket();
-                if (skippedDefaultValue)
+                if (canOptional)
                     cw.EndBracket();
                 return;
             }
             else if (f.Rule == FieldRule.Required)
             {
+                if (canOptional)
+                {
+                    cw.IfBracket( "instance." + f.CsName + " != default" );
+                }
+
                 if ( hasPrevious && canDelta )
                     cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
 
@@ -417,6 +421,9 @@ namespace SilentOrbit.ProtocolBuffers
                 cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
 
                 if ( hasPrevious && canDelta )
+                    cw.EndBracket();
+
+                if ( canOptional )
                     cw.EndBracket();
 
                 return;
