@@ -335,6 +335,16 @@ namespace SilentOrbit.ProtocolBuffers
             }
             else if (f.Rule == FieldRule.Optional)
             {
+                // Don't serialize fields if they are their default value
+                // Should be safe to use on every single type, as long as it doesn't apply during delta comparison
+                bool skippedDefaultValue = false;
+                bool canOptional = f.OptionDefault == null;
+                if (canOptional && !hasPrevious)
+                {
+                    skippedDefaultValue = true;
+                    cw.IfBracket( "instance." + f.CsName + " != default" );
+                }
+
                 if (f.ProtoType is ProtoMessage ||
                     f.ProtoType.ProtoName == ProtoBuiltin.String ||
                     f.ProtoType.ProtoName == ProtoBuiltin.Bytes)
@@ -357,6 +367,9 @@ namespace SilentOrbit.ProtocolBuffers
 
                     if ( hasPrevious && canDelta ) 
                         cw.EndBracket();
+
+                    if (skippedDefaultValue)
+                        cw.EndBracket();
                     return;
                 }
                 if (f.ProtoType is ProtoEnum)
@@ -367,6 +380,8 @@ namespace SilentOrbit.ProtocolBuffers
                     cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
                     if (f.OptionDefault != null)
                         cw.EndBracket();
+                    if (skippedDefaultValue)
+                        cw.EndBracket();
                     return;
                 }
 
@@ -376,7 +391,9 @@ namespace SilentOrbit.ProtocolBuffers
                 KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
                 cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
 
-                if ( hasPrevious && canDelta )
+                if ( hasPrevious && canDelta ) 
+                    cw.EndBracket();
+                if (skippedDefaultValue)
                     cw.EndBracket();
                 return;
             }
