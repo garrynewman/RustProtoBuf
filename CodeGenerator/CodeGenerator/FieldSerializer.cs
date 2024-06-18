@@ -355,21 +355,24 @@ namespace SilentOrbit.ProtocolBuffers
             }
             else if (f.Rule == FieldRule.Optional)
             {
-                if (canOptional)
-                {
-                    cw.IfBracket( "instance." + f.CsName + " != default" );
-                }
-
                 if (f.ProtoType is ProtoMessage ||
                     f.ProtoType.ProtoName == ProtoBuiltin.String ||
                     f.ProtoType.ProtoName == ProtoBuiltin.Bytes)
                 {
                     if (f.ProtoType.Nullable) //Struct always exist, not optional
                     {
+                        // Manual null checks above = don't do default value checks
+                        canOptional = false;
+
                         if (f.ProtoType.ProtoName == ProtoBuiltin.Bytes && f.OptionPooled)
                             cw.IfBracket("instance." + f.CsName + ".Array != null");
                         else
                             cw.IfBracket("instance." + f.CsName + " != null");
+                    }
+
+                    if (canOptional)
+                    {
+                        WriteOptionalFieldCheck( cw, f );
                     }
 
                     if ( hasPrevious && canDelta )
@@ -391,6 +394,10 @@ namespace SilentOrbit.ProtocolBuffers
                 {
                     if (f.OptionDefault != null)
                         cw.IfBracket("instance." + f.CsName + " != " + f.ProtoType.CsType + "." + f.OptionDefault);
+                    if ( canOptional)
+                    {
+                        WriteOptionalFieldCheck( cw, f );
+                    }
                     KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
                     cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
                     if (f.OptionDefault != null)
@@ -402,6 +409,11 @@ namespace SilentOrbit.ProtocolBuffers
 
                 if ( hasPrevious && canDelta )
                     cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
+
+                if ( canOptional)
+                {
+                    WriteOptionalFieldCheck( cw, f );
+                }
 
                 KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
                 cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
