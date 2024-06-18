@@ -271,6 +271,23 @@ namespace SilentOrbit.ProtocolBuffers
             cw.WriteLine(stream + ".Write(msField.GetBuffer(), 0, (int)length" + f.ID + ");");
         }
 
+        private static void WriteOptionalFieldCheck( CodeWriter cw, Field f )
+        {
+            // Support fields with custom default values
+            string defaultString = f.OptionDefault ?? "default";
+
+            // For some reason Ray isn't comparible so just check it's fields 
+            if (f.ProtoTypeName == "Ray")
+            {
+                cw.IfBracket( $"instance.{f.CsName}.origin != default && instance.{f.CsName}.direction != default" );
+            }
+            else
+            {
+                // Normally compare to default 
+                cw.IfBracket( $"instance.{f.CsName} != {defaultString}" );
+            }
+        }
+
         /// <summary>
         /// Generates code for writing one field
         /// </summary>
@@ -285,9 +302,8 @@ namespace SilentOrbit.ProtocolBuffers
             if ( f.ProtoType.ProtoName == ProtoBuiltin.UInt64 ) canDelta = true;
             if ( f.ProtoType.ProtoName == ProtoBuiltin.Double ) canDelta = true;
 
-            // Don't serialize fields if they are their default value
-            // Should be safe to use on every single type, as long as it doesn't apply during delta comparison
-            bool canOptional = f.OptionDefault == null && !hasPrevious;
+            // Don't change behavior of SerializeDelta() calls
+            bool canOptional = !hasPrevious;
 
             if (f.Rule == FieldRule.Repeated)
             {
@@ -398,24 +414,28 @@ namespace SilentOrbit.ProtocolBuffers
             }
             else if (f.Rule == FieldRule.Required)
             {
-                if (canOptional)
-                {
-                    cw.IfBracket( "instance." + f.CsName + " != default" );
-                }
-
-                if ( hasPrevious && canDelta )
+                if ( hasPrevious && canDelta ) 
                     cw.IfBracket( "instance." + f.CsName + " != previous." + f.CsName );
 
                 if (f.ProtoType is ProtoMessage && f.ProtoType.OptionType != "struct" ||
                     f.ProtoType.ProtoName == ProtoBuiltin.String ||
                     f.ProtoType.ProtoName == ProtoBuiltin.Bytes)
                 {
+                    // Don't do extra optional checks if it's trying to throw an error
+                    canOptional = false;
+
                     if (f.ProtoType.ProtoName == ProtoBuiltin.Bytes && f.OptionPooled)
                         cw.WriteLine("if (instance." + f.CsName + ".Array == null)");
                     else
                         cw.WriteLine("if (instance." + f.CsName + " == null)");
 
                     cw.WriteIndent("throw new ArgumentNullException(\"" + f.CsName + "\", \"Required by proto specification.\");");
+                }
+                
+                // Skip default values of fields
+                if ( canOptional)
+                {
+                    WriteOptionalFieldCheck( cw, f );
                 }
                 KeyWriter("stream", f.ID, f.ProtoType.WireType, cw);
                 cw.WriteLine(FieldWriterType(f, "stream", "bw", "instance." + f.CsName, hasPrevious ) );
