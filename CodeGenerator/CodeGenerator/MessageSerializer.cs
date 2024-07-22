@@ -435,7 +435,16 @@ namespace SilentOrbit.ProtocolBuffers
                     }
 
                     cw.WriteLine( "var c = instance." + f.CsName + ";" );
-                    cw.WriteLine( "Facepunch.Pool.FreeList( ref c );" );
+                    
+                    if(f.ProtoType.OptionType == "class")
+                    {
+                        cw.WriteLine("Facepunch.Pool.Free( ref c );");
+                    }
+                    else
+                    {
+                        cw.WriteLine("Facepunch.Pool.FreeUnmanaged( ref c );");
+                    }
+                    
                     cw.WriteLine( "instance." + f.CsName + " = c;" );
                     cw.EndBracket();
                     cw.WriteLine();
