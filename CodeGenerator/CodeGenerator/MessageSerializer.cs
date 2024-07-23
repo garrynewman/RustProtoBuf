@@ -524,7 +524,7 @@ namespace SilentOrbit.ProtocolBuffers
                     FieldSerializer.FieldWriter( m, f, cw, true );
                 }
 
-                cw.WriteLine( "Facepunch.Pool.FreeMemoryStream( ref msField );" );
+                cw.WriteLine( "Facepunch.Pool.FreeUnmanaged( ref msField );" );
 
                 cw.EndBracket();
                 cw.WriteLine();
@@ -546,7 +546,7 @@ namespace SilentOrbit.ProtocolBuffers
             foreach (Field f in m.Fields.Values)
                 FieldSerializer.FieldWriter(m, f, cw);
 
-            cw.WriteLine("Facepunch.Pool.FreeMemoryStream( ref msField );");
+            cw.WriteLine("Facepunch.Pool.FreeUnmanaged( ref msField );");
 
             if (m.OptionPreserveUnknown)
             {
