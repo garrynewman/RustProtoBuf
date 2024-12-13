@@ -303,7 +303,8 @@ namespace SilentOrbit.ProtocolBuffers
             if ( f.ProtoType.ProtoName == ProtoBuiltin.Double ) canDelta = true;
 
             // Don't change behavior of SerializeDelta() calls
-            bool canOptional = !hasPrevious;
+            // Don't skip enums when default values because their default may be awkward
+            bool canOptional = !hasPrevious && !(f.ProtoType is ProtoEnum);
 
             if (f.Rule == FieldRule.Repeated)
             {
