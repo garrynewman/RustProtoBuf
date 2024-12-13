@@ -181,7 +181,7 @@ namespace SilentOrbit.ProtocolBuffers
                             csType = f.OptionCodeType;
 
                         cw.WriteLine("if (instance." + f.CsName + " == null)");
-                        cw.WriteIndent("instance." + f.CsName + " = Facepunch.Pool.GetList<" + csType + ">();");
+                        cw.WriteIndent("instance." + f.CsName + " = Facepunch.Pool.Get<List<" + csType + ">>();");
                     }
                     else if (f.OptionDefault != null)
                     {
@@ -435,7 +435,16 @@ namespace SilentOrbit.ProtocolBuffers
                     }
 
                     cw.WriteLine( "var c = instance." + f.CsName + ";" );
-                    cw.WriteLine( "Facepunch.Pool.FreeList( ref c );" );
+                    
+                    if(f.ProtoType.OptionType == "class")
+                    {
+                        cw.WriteLine("Facepunch.Pool.Free( ref c );");
+                    }
+                    else
+                    {
+                        cw.WriteLine("Facepunch.Pool.FreeUnmanaged( ref c );");
+                    }
+                    
                     cw.WriteLine( "instance." + f.CsName + " = c;" );
                     cw.EndBracket();
                     cw.WriteLine();
@@ -515,7 +524,7 @@ namespace SilentOrbit.ProtocolBuffers
                     FieldSerializer.FieldWriter( m, f, cw, true );
                 }
 
-                cw.WriteLine( "Facepunch.Pool.FreeMemoryStream( ref msField );" );
+                cw.WriteLine( "Facepunch.Pool.FreeUnmanaged( ref msField );" );
 
                 cw.EndBracket();
                 cw.WriteLine();
@@ -537,7 +546,7 @@ namespace SilentOrbit.ProtocolBuffers
             foreach (Field f in m.Fields.Values)
                 FieldSerializer.FieldWriter(m, f, cw);
 
-            cw.WriteLine("Facepunch.Pool.FreeMemoryStream( ref msField );");
+            cw.WriteLine("Facepunch.Pool.FreeUnmanaged( ref msField );");
 
             if (m.OptionPreserveUnknown)
             {
@@ -599,7 +608,7 @@ namespace SilentOrbit.ProtocolBuffers
                 if ( f.Rule == FieldRule.Repeated )
                 {
                     cw.IfBracket( $"this.{f.CsName} != null" );
-                    cw.WriteLine( $"instance.{f.CsName} = Facepunch.Pool.GetList<{f.ProtoType.FullCsType}>();" );
+                    cw.WriteLine( $"instance.{f.CsName} = Facepunch.Pool.Get<List<{f.ProtoType.FullCsType}>>();" );
 
                     cw.ForeachBracket( "item", $"this.{f.CsName}" );
                     if ( f.ProtoType.ProtoName == "bytes" )
